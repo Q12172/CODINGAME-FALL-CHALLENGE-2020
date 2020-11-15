@@ -3,11 +3,13 @@
  * the standard input according to the problem statement.
  **/
 
-let Learn = 0;
+let Learn = 4;
 
 let CanCastFromAllIngrs = false;
 
 let Commands = [];
+let CommandsPrice = 0;
+let PossiblesPaths = [];
 
 // game loop
 while (true) {
@@ -43,7 +45,7 @@ while (true) {
         }
         else{
             //Learn
-            LearningAbleCast.push({ingredients: [delta0, delta1, delta2, delta3], taxCount, actionId})
+            LearningAbleCast.push({tomeIndex, ingredients: [delta0, delta1, delta2, delta3], taxCount, actionId})
         }
     }
 
@@ -82,37 +84,35 @@ while (true) {
         continue;
     }
 
-    //1) if I can Brew A spell than Brew spell
-    let Id = CanIBrewSpell(CurrIngrMe, BrewOrders);
-    if(Id != -1){
-        console.log("BREW " + Id + " Time: "+ (Date.now() - TimeNow));
+    // if I can Brew A spell than Brew spell
+    let Index = CanIBrewSpell(CurrIngrMe, BrewOrders);
+    if(Index != -1 && Commands.length == 0){
+        console.log("BREW " + BrewOrders[Index].actionId + " Time: "+ (Date.now() - TimeNow));
     }
     else{
-        //2) if I can Cast ingrs the Cast ingrs
+        // if I can Cast ingrs the Cast ingrs
         let ArrOutput = CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe);
         let Index = ArrOutput[0];
-        if(Index > -1 && CastOrdersMe[Index].castable == false){
+        if(Index > -1 && CastOrdersMe[Index].castable == false && 
+        ArrOutput[2] == undefined){
             if(ArrOutput[1])
                 Commands.unshift(Index);
             //I Rest after every Cast
             console.log("REST Time: "+ (Date.now() - TimeNow));
         }
-        else if(Index > -1){
+        else if(Index > -1 && ArrOutput[2] == undefined){
             console.log("CAST " + CastOrdersMe[Index].actionId + " Time: "+ (Date.now() - TimeNow));
         }
-        else if(Index == -100){
+        else if(Index > -1 && ArrOutput[2] == "LearnCast"){
             //Learn the first spell so I would be able to
             //make potion with him in the next turn
-            console.log("LEARN " + LearningAbleCast[0].actionId + " Time: "+ (Date.now() - TimeNow));
+            console.log("LEARN " + LearningAbleCast[Index].actionId + " Time: "+ (Date.now() - TimeNow));
         }
         else{
             //I can't do anything then I Rest
             console.log("REST Time: "+ (Date.now() - TimeNow));
         }
     }
-
-    
-
     // Write an action using console.log()
     // To debug: console.error('Debug messages...');
 
@@ -120,9 +120,66 @@ while (true) {
     // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
 }
 
+/*
+- Creating a simulation to know which potions I can get to in a definde number of turns or less
+- sort by number of turns and the by price
+- pick the first path to potion
+
+//if depth == 0
+    // return;
+
+//for every Cast I can make
+    //make it
+    //if the Cast was ok then check if I can brew a potion with my current inventory
+        //if I can
+        // Remembr the path I made to reach this potion and remembr the potion price
+
+        //else
+        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
+
+// Here I have all the potions I can make by using the definded dpeth (number of turns)
+// , using just Cast (no incolude learning, no include resting, no include exhusted)
+
+//if depth == 0
+    // return;
+
+//for every Cast I can make **and the Cast is not exhusted**
+    //make it
+    //if the Cast was ok then check if I can brew a potion with my current inventory
+        //if I can
+        // Remembr the path I made to reach this potion and remembr the potion price
+
+        //else
+        //make a copy of the list of Casts I can do
+        //make the current Cast I used exhusted
+        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
+
+// Here I have all the potions I can make by using the definded dpeth (number of turns)
+// , using just Cast (no incolude learning, no include resting)
+
+//if depth == 0
+    // return;
+
+//One time I do rest and then I preforme the Casts and one time without rest before
+
+//Add to the current path that I did rest
+
+//for every Cast I can make **and the Cast is not exhusted**
+    //make it
+    //if the Cast was ok then check if I can brew a potion with my current inventory
+        //if I can
+        // Remembr the path I made to reach this potion and remembr the potion price
+
+        //else
+        //make a copy of the list of Casts I can do
+        //make the current Cast I used exhusted
+        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
+
+*/
+
 function CanIBrewSpell(CurrIngrMe, BrewOrders){
 
-    let Id = -1;
+    let Index = -1;
     let MaxPrice = 0;
 
     for(let i = 0; i < BrewOrders.length; i++){
@@ -133,10 +190,10 @@ function CanIBrewSpell(CurrIngrMe, BrewOrders){
         if(SumIngredients != undefined && 
            price > MaxPrice){
             MaxPrice = price;
-            Id = BrewOrders[i].actionId;
+            Index = i;
         }
     }
-    return Id;
+    return Index;
 }
 
 function MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, depth, action){
@@ -145,10 +202,10 @@ function MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, depth, a
         return -1;
     }
 
-    //console.error();
-    //console.error("action: " + action);
-    //console.error("CurrIngrMe: ")
-    //console.error(CurrIngrMe)
+    /*console.error();
+    console.error("action: " + action);
+    console.error("CurrIngrMe: ")
+    console.error(CurrIngrMe)*/
 
     for(let i = 0; i < CastOrdersMe.length; i++){
 
@@ -156,56 +213,73 @@ function MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, depth, a
 
         let SumIngredients = GetSumIngredients(CastIngredients, CurrIngrMe);
         if(SumIngredients != undefined){
-            if(CanIBrewSpell(SumIngredients, BrewOrders) != -1){
-                action.push(i);
-                /*console.error();
-                console.error("action: " + action);
-                console.error("CurrIngrMe Final: ")
-                console.error(SumIngredients)
-                console.error("BrewOrders: ")
-                console.error(BrewOrders)*/
-                return action;
+            let Index = CanIBrewSpell(SumIngredients, BrewOrders);
+            if(Index != -1){
+                let act = action.slice();
+                act.push(i);
+                //console.error();
+                //console.error("act: " + act);
+                //console.error("CurrIngrMe Final: ")
+                //console.error(SumIngredients)
+                //console.error("BrewOrders: ")
+                //console.error(BrewOrders)
+                PossiblesPaths.push({action: act, Price: BrewOrders[Index].price});
             }
             else{
                 let act = action.slice();
                 act.push(i);
-                let Result = MakeCastSoNextTurnsIBrew(SumIngredients, BrewOrders, CastOrdersMe, depth - 1, act);
-                if(Result != -1){
-                    return Result;
-                }
+                MakeCastSoNextTurnsIBrew(SumIngredients, BrewOrders, CastOrdersMe, depth - 1, act);
             }
         }
     }
 
-    return [];
+    return -1;
 }
 
 function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe){
 
-    //console.error("Commands: ")
-    //console.error(Commands)
+    PossiblesPaths = [];
+
+    if(Commands.length == 0){
+        CommandsPrice = 0;
+    }
 
     //If I can do a Cast that will lead me 
     //to Brew a potion in the next turn
-    if(Commands.length == 0){
-        Commands = MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, 3, []);
-        if(Commands.length != 0){
+    MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, 3, []);
+    if(PossiblesPaths.length != 0){
+        //sort by turns
+        PossiblesPaths.sort((a,b) => a.action.length - b.action.length);
+        //sort by price
+        PossiblesPaths.sort((a,b) => b.Price - a.Price);
+        //console.error("PossiblesPaths: ")
+        //console.error(PossiblesPaths)
+        if((Commands.length == 0 || PossiblesPaths[0].action.length - 1 <= Commands.length) &&
+        PossiblesPaths[0].Price > CommandsPrice){
+            Commands = PossiblesPaths[0].action;
+            CommandsPrice = PossiblesPaths[0].Price;
+            //console.error("In " + Commands.length + " turns I Brew!!!")
             return [Commands.splice(0,1)[0], true];
         }
-    }
-    else{
-        //console.error(CastOrdersMe)
-        return [Commands.splice(0,1)[0], true];
+        else{
+            return [Commands.splice(0,1)[0], true];
+        }
     }
 
     //console.error("Here")
 
     //If I can learn the first Cast that will lead me 
     //to Brew a potion in the next turn
-    let SumIngredients = GetSumIngredients(LearningAbleCast[0].ingredients, CurrIngrMe);
-    if(SumIngredients != undefined){
-        if(CanIBrewSpell(SumIngredients, BrewOrders) != -1){
-            return [-100, false];
+    for(let i = 0; i < LearningAbleCast.length; i++){
+        let ingrs = LearningAbleCast[0].ingredients;
+        if(LearningAbleCast[0].tomeIndex <= CurrIngrMe[0]){
+            let SumIngredients = GetSumIngredients(ingrs, CurrIngrMe);
+            if(SumIngredients != undefined){
+                if(CanIBrewSpell(SumIngredients, BrewOrders) != -1){
+                    console.error("Yeah!!!!!")
+                    return [i, false, "LearnCast"];
+                }
+            }
         }
     }
     
@@ -284,5 +358,4 @@ function GetSumIngredients(Ingredients1, Ingredients2){
     }
 
     return arr;
-
 }
