@@ -13,6 +13,7 @@ let PossiblesPaths = [];
 
 // game loop
 while (true) {
+    let IsTargetExist = false;
     const actionCount = parseInt(readline()); // the number of spells and recipes in play
     let TimeNow = Date.now();
     let BrewOrders = [];
@@ -34,13 +35,16 @@ while (true) {
         const repeatable = inputs[10] !== '0'; // for the first two leagues: always 0; later: 1 if this is a repeatable player spell
         if(actionType == "CAST"){
             let Free = delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0;
-            CastOrdersMe.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free});
+            CastOrdersMe.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
         }
         else if(actionType == "OPPONENT_CAST"){
             let Free = delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0;
-            CastOrdersOpponent.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free});
+            CastOrdersOpponent.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
         }
         else if(actionType == "BREW"){
+            if(Commands.length != 0 && parseInt(Commands[Commands.length - 1].split(' ')[1]) == actionId){
+                IsTargetExist = true;
+            }
             BrewOrders.push({ingredients: [delta0, delta1, delta2, delta3], price, actionId});
         }
         else{
@@ -73,6 +77,10 @@ while (true) {
         const score = parseInt(inputs[4]); // amount of rupees
     }
 
+    if(IsTargetExist == false){
+        Commands = [];
+    }
+
     //console.error(LearningAbleCast)
 
     if(CanCastFromAllIngrs == false)
@@ -84,33 +92,45 @@ while (true) {
         continue;
     }
 
-    // if I can Brew A spell than Brew spell
-    let Index = CanIBrewSpell(CurrIngrMe, BrewOrders);
-    if(Index != -1 && Commands.length == 0){
-        console.log("BREW " + BrewOrders[Index].actionId + " Time: "+ (Date.now() - TimeNow));
-    }
-    else{
-        // if I can Cast ingrs the Cast ingrs
-        let ArrOutput = CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe);
-        let Index = ArrOutput[0];
-        if(Index > -1 && CastOrdersMe[Index].castable == false && 
-        ArrOutput[2] == undefined){
-            if(ArrOutput[1])
-                Commands.unshift(Index);
-            //I Rest after every Cast
-            console.log("REST Time: "+ (Date.now() - TimeNow));
-        }
-        else if(Index > -1 && ArrOutput[2] == undefined){
+
+    let Output = CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe);
+    /*console.error();
+    console.error("Output: ");
+    console.error(Output);
+    console.error();*/
+    if(Output[1] == false){
+        let Index = Output[0];
+        if(Index != -1 && CastOrdersMe[Index].castable == true){
             console.log("CAST " + CastOrdersMe[Index].actionId + " Time: "+ (Date.now() - TimeNow));
         }
-        else if(Index > -1 && ArrOutput[2] == "LearnCast"){
-            //Learn the first spell so I would be able to
-            //make potion with him in the next turn
-            console.log("LEARN " + LearningAbleCast[Index].actionId + " Time: "+ (Date.now() - TimeNow));
+        else{
+            console.log("REST Time: "+ (Date.now() - TimeNow));
+        }
+    }
+    else{
+        console.error();
+        console.error("Price: "+CommandsPrice);
+        if(Output[0] == "Rest"){
+            console.log("REST Time: "+ (Date.now() - TimeNow));
+        }
+        else if(typeof Output[0] == "string" && Output[0].includes("Brew")){
+            let ActionId = parseInt(Output[0].split(' ')[1]);
+            console.log("BREW " + ActionId + " Time: "+ (Date.now() - TimeNow));
+        }
+        else if(typeof Output[0] == "string" && Output[0].includes("CAST")){
+            let Actions = Output[0].split(' ');
+            let ActionId = parseInt([1]);
+            console.log("CAST " + ActionId + " Time: "+ (Date.now() - TimeNow));
         }
         else{
-            //I can't do anything then I Rest
-            console.log("REST Time: "+ (Date.now() - TimeNow));
+            let ActionId = Output[0];
+            if(ActionId == Commands[0]){
+                console.error("LEARN")
+                console.log("LEARN " + ActionId + " Time: "+ (Date.now() - TimeNow));
+            }
+            else{
+                console.log("CAST " + ActionId + " Time: "+ (Date.now() - TimeNow));
+            }
         }
     }
     // Write an action using console.log()
@@ -124,80 +144,6 @@ while (true) {
 - Creating a simulation to know which potions I can get to in a definde number of turns or less
 - sort by number of turns and the by price
 - pick the first path to potion
-
----------------------------------------------------------------------------------------------------------------------------------------------
-
-//if depth == 0
-    // return;
-
-//for every Cast I can make
-    //make it
-    //if the Cast was ok then check if I can brew a potion with my current inventory
-        //if I can
-        // Remembr the path I made to reach this potion and remembr the potion price
-
-        //else
-        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
-
-// Here I have all the potions I can make by using the definded dpeth (number of turns)
-// , using just Cast (no include learning, no include resting, no include exhusted)
-
----------------------------------------------------------------------------------------------------------------------------------------------
-
-//if depth == 0
-    // return;
-
-//for every Cast I can make **and the Cast is not exhusted**
-    //make it
-    //if the Cast was ok then check if I can brew a potion with my current inventory
-        //if I can
-        // Remembr the path I made to reach this potion and remembr the potion price
-
-        //else
-        //make a copy of the list of Casts I can do
-        //make the current Cast I used exhusted
-        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
-
-// Here I have all the potions I can make by using the definded dpeth (number of turns)
-//  , using Cast, exhusted (no include learning, no include resting)
-
----------------------------------------------------------------------------------------------------------------------------------------------
-
-//if depth == 0
-    // return;
-
-//One time I do rest and then I preforme the Casts and one time without rest before
-
-//Add to the current path Rest and make a copy of the list of Casts but change every Cast to be not exhusted
-
-//for every Cast I can make and the Cast is not exhusted
-    //make it
-    //if the Cast was ok then check if I can brew a potion with my current inventory
-        //if I can
-        //Remembr the path I made to reach this potion and remembr the potion price
-
-        //else
-        //make a copy of the list of Casts I can do
-        //make the current Cast I used exhusted
-        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
-
-//Do the same thing but without resting
-
-//for every Cast I can make and the Cast is not exhusted
-    //make it
-    //if the Cast was ok then check if I can brew a potion with my current inventory
-        //if I can
-        //Remembr the path I made to reach this potion and remembr the potion price
-
-        //else
-        //make a copy of the list of Casts I can do
-        //make the current Cast I used exhusted
-        //call the function again with my current inventory (after the Cast) and lower the depth by 1 and add to the path the current action
-
-// Here I have all the potions I can make by using the definded dpeth (number of turns)
-// , using Cast, rest, exhusted
-
----------------------------------------------------------------------------------------------------------------------------------------------
 
 //if depth == 0
     // return;
@@ -266,7 +212,49 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                 if(Index != -1){
                     Path.push("Rest");
                     Path.push(CastOrders[i].actionId);
-                    PossiblesPaths.push({Path, Price: BrewOrders[Index].price});
+                    let Brew = "Brew " + BrewOrders[Index].actionId;
+                    Path.push(Brew);
+                    let Price = BrewOrders[Index].price;
+                    let check = false;
+                    //console.error("Path: ")
+                    //console.error(Path)
+                    for(let j = 0; j < Path.length - 1; j++){
+                        if(typeof Path[j] == "number" && Path[j + 1] == "Rest"){
+                            let mone = 1;
+                            let Num = Path[j];
+                            if(CastOrders[GetIndexOfId(CastOrders, Num)].repeatable == false){
+                                continue;
+                            }
+                            let SavedJ = j + 2;
+                            while(SavedJ < Path.length - 1 && Path[SavedJ] == Num){
+                                mone++;
+                                SavedJ+=2;
+                            }
+
+                            SavedJ--;
+
+                            if(mone > 1){
+                                if(Path[SavedJ] == "Rest")
+                                    Path.splice(j + 1, mone * 2 - 1);
+                                else
+                                    Path.splice(j + 1, mone * 2 - 2);
+
+                                Path[j] = "CAST " + Num + " " + mone;
+                                check = true;
+                            }
+                        }
+                    }
+
+                    if(check){
+                        console.error("Here!!!!!! Path: ")
+                        console.error(Path)
+                    }
+                    if(PossiblesPaths[Price] == undefined){
+                        PossiblesPaths[Price] = {Path, Price};
+                    }
+                    else if(PossiblesPaths[Price].length > Path.length){
+                        PossiblesPaths[Price] = {Path, Price};
+                    }
                     Path = SavedPath.slice();
                 }
                 else{
@@ -283,7 +271,48 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                 let Index = CanIBrewSpell(SumIngerds, BrewOrders);
                 if(Index != -1){
                     Path.push(CastOrders[i].actionId);
-                    PossiblesPaths.push({Path, Price: BrewOrders[Index].price});
+                    let Brew = "Brew " + BrewOrders[Index].actionId;
+                    Path.push(Brew);
+                    let Price = BrewOrders[Index].price;
+                    let check = false;
+                    for(let j = 0; j < Path.length - 1; j++){
+                        if(typeof Path[j] == "number" && Path[j + 1] == "Rest"){
+                            let mone = 1;
+                            let Num = Path[j];
+                            if(CastOrders[GetIndexOfId(CastOrders, Num)].repeatable == false){
+                                continue;
+                            }
+                            let SavedJ = j + 2;
+                            while(SavedJ < Path.length - 1 && Path[SavedJ] == Num){
+                                mone++;
+                                SavedJ+=2;
+                            }
+
+                            SavedJ--;
+
+                            if(mone > 1){
+                                if(Path[SavedJ] == "Rest")
+                                    Path.splice(j + 1, mone * 2 - 1);
+                                else
+                                    Path.splice(j + 1, mone * 2 - 2);
+
+                                Path[j] = "CAST " + Num + " " + mone;
+                                check = true;
+                            }
+                        }
+                    }
+
+                    if(check){
+                        console.error("Here!!!!!! Path: ")
+                        console.error(Path)
+                    }
+
+                    if(PossiblesPaths[Price] == undefined){
+                        PossiblesPaths[Price] = {Path, Price};
+                    }
+                    else if(PossiblesPaths[Price].length > Path.length){
+                        PossiblesPaths[Price] = {Path, Price};
+                    }
                     Path = SavedPath.slice();
                 }
                 else{
@@ -298,13 +327,13 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
         }
     }
 
-    for(let i = 0; i < LearningAbleCast.length; i++){
+    /*for(let i = 0; i < LearningAbleCast.length; i++){
         if(LearningAbleCast[i].tomeIndex > CurrIngreds[0]){
             continue;
         }
         let TempCurrIngreds = CurrIngreds.slice();
         TempCurrIngreds[0] -= LearningAbleCast[i].tomeIndex;
-        let SumIngerds = GetSumIngredients(LearningAbleCast[i].ingredients, CurrIngreds);
+        let SumIngerds = GetSumIngredients(LearningAbleCast[i].ingredients, TempCurrIngreds);
         if(SumIngerds != undefined){
             let Index = CanIBrewSpell(SumIngerds, BrewOrders);
             if(Index != -1){
@@ -312,7 +341,15 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                 Path.push(LearningAbleCast[i].actionId);
                 //Cast
                 Path.push(LearningAbleCast[i].actionId);
-                PossiblesPaths.push({Path, Price: BrewOrders[Index].price});
+                let Brew = "Brew " + BrewOrders[Index].actionId;
+                Path.push(Brew);
+                let Price = BrewOrders[Index].price;
+                if(PossiblesPaths[Price] == undefined){
+                    PossiblesPaths[Price] = {Path, Price};
+                }
+                else if(PossiblesPaths[Price].length > Path.length){
+                    PossiblesPaths[Price] = {Path, Price};
+                }
                 Path = SavedPath.slice();
             }
             else{
@@ -329,7 +366,7 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                 CastOrders.splice(CastOrders.length - 1,1);
             }
         }
-    }
+    }*/
 }
 
 function CanIBrewSpell(CurrIngrMe, BrewOrders){
@@ -351,102 +388,47 @@ function CanIBrewSpell(CurrIngrMe, BrewOrders){
     return Index;
 }
 
-function MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, depth, action){
-
-    if(depth == 0){
-        return -1;
-    }
-
-    /*console.error();
-    console.error("action: " + action);
-    console.error("CurrIngrMe: ")
-    console.error(CurrIngrMe)*/
-
-    for(let i = 0; i < CastOrdersMe.length; i++){
-
-        let CastIngredients = CastOrdersMe[i].ingredients;
-
-        let SumIngredients = GetSumIngredients(CastIngredients, CurrIngrMe);
-        if(SumIngredients != undefined){
-            let Index = CanIBrewSpell(SumIngredients, BrewOrders);
-            if(Index != -1){
-                let act = action.slice();
-                act.push(i);
-                //console.error();
-                //console.error("act: " + act);
-                //console.error("CurrIngrMe Final: ")
-                //console.error(SumIngredients)
-                //console.error("BrewOrders: ")
-                //console.error(BrewOrders)
-                PossiblesPaths.push({action: act, Price: BrewOrders[Index].price});
-            }
-            else{
-                let act = action.slice();
-                act.push(i);
-                MakeCastSoNextTurnsIBrew(SumIngredients, BrewOrders, CastOrdersMe, depth - 1, act);
-            }
-        }
-    }
-
-    return -1;
-}
-
 function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe){
 
     PossiblesPaths = [];
+        
+    if(CastOrdersMe. length <= 9)
+         Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 5, []);
+    else if(CastOrdersMe. length <= 10)
+        Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 4, []);
+    else if(CastOrdersMe. length <= 20)
+        Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 3, []);
 
-    Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 3, []);
-
-    //sort by turns
-    PossiblesPaths.sort((a,b) => a.Path.length - b.Path.length);
     //sort by price
-    PossiblesPaths.sort((a,b) => b.Price - a.Price);
+    PossiblesPaths.sort((a,b) => {
+        return Math.abs(2.3 - (a.Price / a.Path.length)) - Math.abs(2.3 - (b.Price / b.Path.length));
+    });
+
+    console.error("Commands: ")
+    console.error(Commands)
+
 
     console.error("PossiblesPaths: ");
     console.error(PossiblesPaths);
 
-    if(Commands.length == 0){
-        CommandsPrice = 0;
-    }
+    if(PossiblesPaths.length > 0){
+        let BestPath = PossiblesPaths[0].Path;
+        let BestPrice = PossiblesPaths[0].Price;
 
-    PossiblesPaths = [];
-
-    //If I can do a Cast that will lead me 
-    //to Brew a potion in the next turn
-    MakeCastSoNextTurnsIBrew(CurrIngrMe, BrewOrders, CastOrdersMe, 3, []);
-    if(PossiblesPaths.length != 0){
-        //sort by turns
-        PossiblesPaths.sort((a,b) => a.action.length - b.action.length);
-        //sort by price
-        PossiblesPaths.sort((a,b) => b.Price - a.Price);
-        //console.error("PossiblesPaths: ")
-        //console.error(PossiblesPaths)
-        if((Commands.length == 0 || PossiblesPaths[0].action.length - 1 <= Commands.length) &&
-        PossiblesPaths[0].Price > CommandsPrice){
-            Commands = PossiblesPaths[0].action;
-            CommandsPrice = PossiblesPaths[0].Price;
-            //console.error("In " + Commands.length + " turns I Brew!!!")
+        if(Commands.length == 0){
+            Commands = BestPath;
+            CommandsPrice = BestPrice;
             return [Commands.splice(0,1)[0], true];
         }
         else{
-            return [Commands.splice(0,1)[0], true];
-        }
-    }
-
-    //console.error("Here")
-
-    //If I can learn the first Cast that will lead me 
-    //to Brew a potion in the next turn
-    for(let i = 0; i < LearningAbleCast.length; i++){
-        let ingrs = LearningAbleCast[0].ingredients;
-        if(LearningAbleCast[0].tomeIndex <= CurrIngrMe[0]){
-            let SumIngredients = GetSumIngredients(ingrs, CurrIngrMe);
-            if(SumIngredients != undefined){
-                if(CanIBrewSpell(SumIngredients, BrewOrders) != -1){
-                    console.error("Yeah!!!!!")
-                    return [i, false, "LearnCast"];
-                }
+            if(BestPrice >  CommandsPrice && Math.abs(2.3 - (BestPrice / BestPath.length)) < Math.abs(2.3 - (CommandsPrice / Commands.length))){
+                console.error("CHANGE!!!!!!!!!!!!!!")
+                Commands = BestPath;
+                CommandsPrice = BestPrice;
+                return [Commands.splice(0,1)[0], true];
             }
+            else
+                return [Commands.splice(0,1)[0], true];
         }
     }
     
@@ -502,6 +484,16 @@ function CanCastFromAllIngredients(CastOrdersMe){
     })
 
     return CanCastIngrs.every(x => x == 1);
+}
+
+function GetIndexOfId(set, id){
+
+    for(let i = 0; i < set.length; i++){
+        if(set[i].actionId == id){
+            return i;
+        }
+    }
+    return -1;
 }
 
 function GetSumIngredients(Ingredients1, Ingredients2){
