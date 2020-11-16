@@ -3,7 +3,7 @@
  * the standard input according to the problem statement.
  **/
 
-let Learn = 4;
+let Learn = 10;
 
 let CanCastFromAllIngrs = false;
 
@@ -119,8 +119,9 @@ while (true) {
         }
         else if(typeof Output[0] == "string" && Output[0].includes("CAST")){
             let Actions = Output[0].split(' ');
-            let ActionId = parseInt([1]);
-            console.log("CAST " + ActionId + " Time: "+ (Date.now() - TimeNow));
+            let times = parseInt(Actions[2]);
+            let ActionId = parseInt(Actions[1]);
+            console.log("CAST " + ActionId + " " + times +  " Time: "+ (Date.now() - TimeNow));
         }
         else{
             let ActionId = Output[0];
@@ -234,11 +235,7 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                             SavedJ--;
 
                             if(mone > 1){
-                                if(Path[SavedJ] == "Rest")
-                                    Path.splice(j + 1, mone * 2 - 1);
-                                else
-                                    Path.splice(j + 1, mone * 2 - 2);
-
+                                Path.splice(j + 1, mone * 2 - 2);
                                 Path[j] = "CAST " + Num + " " + mone;
                                 check = true;
                             }
@@ -246,8 +243,8 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                     }
 
                     if(check){
-                        console.error("Here!!!!!! Path: ")
-                        console.error(Path)
+                        //console.error("Here!!!!!! Path: ")
+                        //console.error(Path)
                     }
                     if(PossiblesPaths[Price] == undefined){
                         PossiblesPaths[Price] = {Path, Price};
@@ -291,11 +288,7 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                             SavedJ--;
 
                             if(mone > 1){
-                                if(Path[SavedJ] == "Rest")
-                                    Path.splice(j + 1, mone * 2 - 1);
-                                else
-                                    Path.splice(j + 1, mone * 2 - 2);
-
+                                Path.splice(j + 1, mone * 2 - 2);
                                 Path[j] = "CAST " + Num + " " + mone;
                                 check = true;
                             }
@@ -303,8 +296,8 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                     }
 
                     if(check){
-                        console.error("Here!!!!!! Path: ")
-                        console.error(Path)
+                        //console.error("Here!!!!!! Path: ")
+                        //console.error(Path)
                     }
 
                     if(PossiblesPaths[Price] == undefined){
@@ -392,24 +385,24 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, 
 
     PossiblesPaths = [];
         
-    if(CastOrdersMe. length <= 9)
-         Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 5, []);
-    else if(CastOrdersMe. length <= 10)
+    //if(CastOrdersMe. length <= 11)
+      //  Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 5, []);
+    if(CastOrdersMe. length <= 14)//else if(CastOrdersMe. length <= 14)
         Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 4, []);
     else if(CastOrdersMe. length <= 20)
         Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 3, []);
 
     //sort by price
     PossiblesPaths.sort((a,b) => {
-        return Math.abs(2.3 - (a.Price / a.Path.length)) - Math.abs(2.3 - (b.Price / b.Path.length));
+        return (b.Price / b.Path.length) - (a.Price / a.Path.length);
     });
 
     console.error("Commands: ")
     console.error(Commands)
 
 
-    console.error("PossiblesPaths: ");
-    console.error(PossiblesPaths);
+    //console.error("PossiblesPaths: ");
+    //console.error(PossiblesPaths);
 
     if(PossiblesPaths.length > 0){
         let BestPath = PossiblesPaths[0].Path;
@@ -421,8 +414,8 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, 
             return [Commands.splice(0,1)[0], true];
         }
         else{
-            if(BestPrice >  CommandsPrice && Math.abs(2.3 - (BestPrice / BestPath.length)) < Math.abs(2.3 - (CommandsPrice / Commands.length))){
-                console.error("CHANGE!!!!!!!!!!!!!!")
+            if((BestPrice / BestPath.length) > (CommandsPrice / Commands.length)){
+                //console.error("CHANGE!!!!!!!!!!!!!!")
                 Commands = BestPath;
                 CommandsPrice = BestPrice;
                 return [Commands.splice(0,1)[0], true];
