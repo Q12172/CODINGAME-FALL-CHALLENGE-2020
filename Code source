@@ -1,214 +1,364 @@
+using System;
+using System.Linq;
+using System.IO;
+using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+
+
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
+class Node<T>{
 
-let Learned = -1;
+    public Node<T> Before;
+    public T value;
+    public Node<T> Next;
 
-let InventoryRecursive = [];
-
-let BrewOrders = [];
-
-let Learn = 8;
-
-let CanCastFromAllIngrs = false;
-
-let Commands = [];
-let CommandsPrice = 0;
-let PossiblesPaths = [];
-
-let OldScoreOp = 0;
-let OldScoreMe = 0;
-
-let NumberOfPotionsMadeByMe = 0;
-let NumberOfPotionsMadeByOp = 0;
-
-let TimeNow = 0;
-
-// game loop
-while (true) {
-    let IsTargetExist = false;
-    let IsLearnExist = true;
-    for(let i = 0; i < Commands.length; i++){
-        if(typeof Commands[i] == "string" && Commands[i].includes("Learn")){
-            IsLearnExist = false;
-            break;
-        }
+    public Node(T value, Node<T> Before)
+    {
+        this.value = value;
+        Next = null;
+        this.Before = Before;
     }
-    const actionCount = parseInt(readline()); // the number of spells and recipes in play
-    TimeNow = Date.now();
-    BrewOrders = [];
-    let CastOrdersMe = [];
-    //let CastOrdersOpponent = [];
-    let LearningAbleCast = [];
-    for (let i = 0; i < actionCount; i++) {
-        var inputs = readline().split(' ');
-        const actionId = parseInt(inputs[0]); // the unique ID of this spell or recipe
-        const actionType = inputs[1]; // in the first league: BREW; later: CAST, OPPONENT_CAST, LEARN, BREW
-        const delta0 = parseInt(inputs[2]); // tier-0 ingredient change
-        const delta1 = parseInt(inputs[3]); // tier-1 ingredient change
-        const delta2 = parseInt(inputs[4]); // tier-2 ingredient change
-        const delta3 = parseInt(inputs[5]); // tier-3 ingredient change
-        const price = parseInt(inputs[6]); // the price in rupees if this is a potion
-        const tomeIndex = parseInt(inputs[7]); // in the first two leagues: always 0; later: the index in the tome if this is a tome spell, equal to the read-ahead tax
-        const taxCount = parseInt(inputs[8]); // in the first two leagues: always 0; later: the amount of taxed tier-0 ingredients you gain from learning this spell
-        const castable = inputs[9] !== '0'; // in the first league: always 0; later: 1 if this is a castable player spell
-        const repeatable = inputs[10] !== '0'; // for the first two leagues: always 0; later: 1 if this is a repeatable player spell
-        if(actionType == "CAST"){
-            let Free = delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0;
-            CastOrdersMe.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
+    public Node(T value)
+    {
+        this.value = value;
+        Next = null;
+        Before = null;
+    }
+
+    public Node<T> GetLastNode(Node<T> Node){
+        while(Node.Next != null){
+            Node = Node.Next;
         }
-        else if(actionType == "OPPONENT_CAST"){
-            //let Free = delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0;
-            //CastOrdersOpponent.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
-        }
-        else if(actionType == "BREW"){
-            if(Commands.length != 0 && parseInt(Commands[Commands.length - 1].split(' ')[1]) == actionId){
-                IsTargetExist = true;
+        return Node;
+    }
+}
+
+class LearnSpell{
+
+    public bool castable;
+    public int[] ingredients;
+    public int actionId;
+    public bool repeatable;
+    public int tomeIndex;
+
+    public LearnSpell(bool castable, int[] ingredients, int actionId, bool repeatable, int tomeIndex)
+    {
+        this.castable = castable;
+        this.ingredients = ingredients;
+        this.actionId = actionId;
+        this.repeatable = repeatable;
+        this.tomeIndex = tomeIndex;
+    }
+
+}
+
+class Spell{
+
+    public bool castable;
+    public int[] ingredients;
+    public int actionId;
+    public bool Free;
+    public bool repeatable;
+
+    public Spell(bool castable, int[] ingredients, int actionId, bool Free, bool repeatable)
+    {
+        this.castable = castable;
+        this.ingredients = ingredients;
+        this.actionId = actionId;
+        this.Free = Free;
+        this.repeatable = repeatable;
+    }
+
+}
+
+class Order{
+
+    public int[] ingredients;
+    public int price;
+    public int actionId;
+
+    public Order(int[] ingredients, int price, int actionId){
+
+        this.ingredients = ingredients;
+        this.price = price;
+        this.actionId = actionId;
+    }
+
+}
+
+
+class Player
+{
+    static void Main(string[] args)
+    {
+        string[] inputs;
+
+        int Learned = -1;
+
+        //int[] InventoryRecursive = new int [?];
+
+        Node<Order> FirstBrewOrders = null;
+
+        int Learn = 8;
+
+        bool CanCastFromAllIngrs = false;
+
+        Node<string> FirstCommand = null;
+        int CommandsPrice = 0;
+        Node<string> PossiblesPaths = null;
+
+        int OldScoreOp = 0;
+        int OldScoreMe = 0;
+
+        int NumberOfPotionsMadeByMe = 0;
+        int NumberOfPotionsMadeByOp = 0;
+
+        int TimeNow = 0;
+
+        // game loop
+        while (true)
+        {
+            Node<string> Command = FirstCommand;
+            bool IsTargetExist = false;
+            bool IsLearnExist = true;
+            while(Command != null){
+                if(Command.value.Contains("Learn")){
+                    IsLearnExist = false;
+                    break;
+                }
+                Command = Command.Next;
             }
-            BrewOrders.push({ingredients: [delta0, delta1, delta2, delta3], price, actionId});
-        }
-        else{
-            if(IsLearnExist == false){
-                for(let i = 0; i < Commands.length; i++){
-                    if(typeof Commands[i] == "string" && Commands[i].includes("Learn")){
-                        if(actionId == parseInt(Commands[i].split(' ')[1])){
-                            IsLearnExist = true;
-                            break;
+            int actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
+            TimeNow = DateTime.Now.Millisecond;
+            FirstBrewOrders = null;
+            Node<Spell> FirstCastOrdersMe = null;
+            //Node<Spell> CastOrdersOpponent = null;
+            Node<LearnSpell> FirstLearningAbleCast = null;
+            for (int i = 0; i < actionCount; i++)
+            {
+                inputs = Console.ReadLine().Split(' ');
+                int actionId = int.Parse(inputs[0]); // the unique ID of this spell or recipe
+                string actionType = inputs[1]; // in the first league: BREW; later: CAST, OPPONENT_CAST, LEARN, BREW
+                int delta0 = int.Parse(inputs[2]); // tier-0 ingredient change
+                int delta1 = int.Parse(inputs[3]); // tier-1 ingredient change
+                int delta2 = int.Parse(inputs[4]); // tier-2 ingredient change
+                int delta3 = int.Parse(inputs[5]); // tier-3 ingredient change
+                int price = int.Parse(inputs[6]); // the price in rupees if this is a potion
+                int tomeIndex = int.Parse(inputs[7]); // in the first two leagues: always 0; later: the index in the tome if this is a tome spell, equal to the read-ahead tax; For brews, this is the value of the current urgency bonus
+                int taxCount = int.Parse(inputs[8]); // in the first two leagues: always 0; later: the amount of taxed tier-0 ingredients you gain from learning this spell; For brews, this is how many times you can still gain an urgency bonus
+                bool castable = inputs[9] != "0"; // in the first league: always 0; later: 1 if this is a castable player spell
+                bool repeatable = inputs[10] != "0"; // for the first two leagues: always 0; later: 1 if this is a repeatable player spell
+                if(actionType == "CAST"){
+                    int[] ingredients = {delta0, delta1, delta2, delta3};
+                    Spell spell = new Spell(castable, ingredients, actionId, delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0
+                    ,repeatable);
+                    if(FirstCastOrdersMe == null){
+                        FirstCastOrdersMe = new Node<Spell>(spell);
+                    }
+                    else{
+                        Node<Spell> LastCastOrderMe = FirstCastOrdersMe.GetLastNode(FirstCastOrdersMe);
+                        LastCastOrderMe.Next = new Node<Spell>(spell);
+                    }
+                }
+                else if(actionType == "OPPONENT_CAST"){
+                    /*int[] ingredients = {delta0, delta1, delta2, delta3};
+                    Spell spell = new Spell(castable, ingredients, actionId, delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0
+                    ,repeatable);
+                    if(CastOrdersOpponent == null){
+                        CastOrdersOpponent = new Node<Spell>(spell);
+                    }
+                    else{
+                        CastOrdersOpponent.SetNext(new Node<Spell>(spell));
+                        CastOrdersOpponent = CastOrdersOpponent.GetNext();
+                    }*/
+                }
+                else if(actionType == "BREW"){
+                    Node<string> LastCommand = FirstCommand.GetLastNode(FirstCommand);
+                    if(FirstCommand != null && int.Parse(LastCommand.value.Split(" ")[1]) == actionId){
+                        IsTargetExist = true;
+                    }
+                    int[] ingredients = {delta0, delta1, delta2, delta3};
+                    Order order = new Order(ingredients, price, actionId);
+                    if(FirstBrewOrders == null){
+                        FirstBrewOrders = new Node<Order>(order);
+                    }
+                    else{
+                        Node<Order> LastBrewOrder = FirstBrewOrders.GetLastNode(FirstBrewOrders);
+                        LastBrewOrder.Next = new Node<Order>(order);
+                    }
+                }
+                else{
+                    if(IsLearnExist == false){
+                        Node<string> PosCommand = FirstCommand;
+                        while(PosCommand != null){
+                            if(PosCommand.GetValue().Contains("Learn") && int.Parse(PosCommand.GetValue().Split(" ")[1]) == actionId){
+                                IsLearnExist = true;
+                                break;
+                            }
                         }
+                    }
+
+                    int[] ingredients = {delta0, delta1, delta2, delta3};
+                    LearnSpell learnSpell = new LearnSpell(castable, ingredients, actionId, repeatable, tomeIndex);
+                    if(FirstLearningAbleCast == null){
+                        FirstLearningAbleCast = new Node<LearnSpell>(learnSpell);
+                    }
+                    else{
+                        Node<LearnSpell> LastLearningAbleCast = FirstLearningAbleCast.GetLastNode(FirstLearningAbleCast);
+                        LastLearningAbleCast.Next = new Node<LearnSpell>(learnSpell);
                     }
                 }
             }
-            //Learn
-            LearningAbleCast.push({tomeIndex, ingredients: [delta0, delta1, delta2, delta3], taxCount, actionId, repeatable, castable})
-        }
-    }
 
-    if(Learned != -1){
-        for(let i = 0; i < Commands.length; i++){
-            if(Commands[i] == Learned){
-                Commands[i] = CastOrdersMe[CastOrdersMe.length - 1].actionId;
+            if(Learned != -1){
+                Node<string> PosCommand = FirstCommand;
+                while(PosCommand != null){
+                    if(int.Parse(PosCommand.value) == Learned){
+                        Node<Spell> LastCastOrderMe = FirstCastOrdersMe.GetLastNode(FirstCastOrdersMe);
+
+                        PosCommand.value = "" + LastCastOrderMe.value.actionId;
+                    }
+                    else if(PosCommand.value.Contains("CAST")){
+                        string[] Actions = PosCommand.value.Split(" ");
+
+                        Node<Spell> LastCastOrderMe = FirstCastOrdersMe.GetLastNode(FirstCastOrdersMe);
+
+                        PosCommand.value = "CAST " + LastCastOrderMe.value.actionId + " " + int.Parse(Actions[2]);
+                    }
+
+                    PosCommand = PosCommand.Next;
+                }
+                Learned = -1;
             }
-            else if(typeof Commands[i] == "string" && Commands[i].includes("CAST")){
-                let Actions = Commands[i].split(' ');
-                let ActionId = parseInt(Actions[1]);
-                if(ActionId == Learned)
-                    Commands[i] = "CAST " + CastOrdersMe[CastOrdersMe.length - 1].actionId + " " + parseInt(Actions[2]);
+
+            int[] CurrIngrMe = null;
+            //int[] CurrIngrOp = new int[4];
+            for (int i = 0; i < 2; i++)
+            {
+                inputs = Console.ReadLine().Split(' ');
+                int inv0 = int.Parse(inputs[0]); // tier-0 ingredients in inventory
+                int inv1 = int.Parse(inputs[1]);
+                int inv2 = int.Parse(inputs[2]);
+                int inv3 = int.Parse(inputs[3]);
+                int score = int.Parse(inputs[4]); // amount of rupees
+                if(i == 0){
+                    CurrIngrMe = {inv0, inv1, inv2, inv3};
+                    if(score != OldScoreMe){
+                        OldScoreMe = score;
+                        NumberOfPotionsMadeByMe++;
+                    }
+                }
+                else{
+                    //CurrIngrOp = {inv0, inv1, inv2, inv3};
+                    if(score != OldScoreOp){
+                        OldScoreOp = score;
+                        NumberOfPotionsMadeByOp++;
+                    }
+                }
+            }
+
+            if(IsTargetExist == false || IsLearnExist == false){
+                FirstCommand = null;
+            }
+
+            if(CanCastFromAllIngrs == false)
+                CanCastFromAllIngrs = CanCastFromAllIngredients(FirstCastOrdersMe);
+
+            if((Learn > 0 || CanCastFromAllIngrs == false) && Learn > 0){
+                Console.WriteLine("LEARN " + FirstLearningAbleCast.value.actionId);
+                Learn--;
+                continue;
+            }
+
+            string[] Output = CanICastIngrAndThenBrewSpell(FirstLearningAbleCast, CurrIngrMe, FirstCastOrdersMe);
+            if(Output[1] == "false"){
+                int Index = int.Parse(Output[0]);
+                if(Index != -1){
+
+                    Node<Spell> CastOrderMe = FirstCastOrdersMe;
+
+                    while(Index != 0){
+                        CastOrderMe = CastOrderMe.Next;
+                        Index--;
+                    }
+
+                    if(CastOrderMe.value.castable == true){
+                        Console.WriteLine("CAST " + CastOrderMe.value.actionId + " Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                    }
+                    else{
+                        Console.WriteLine("REST Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                    }
+                }
+                else{
+                    Console.WriteLine("REST Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                }
+            }
+            else{
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("Price: "+CommandsPrice);
+                if(Output[0] == "Rest"){
+                    Console.WriteLine("REST Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                }
+                else if(Output[0].Contains("Brew")){
+                    int ActionId = int.Parse(Output[0].Split(' ')[1]);
+                    Console.WriteLine("BREW " + ActionId + " Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                }
+                else if(Output[0].Contains("CAST")){
+                    string[] Actions = Output[0].Split(' ');
+                    int times = int.Parse(Actions[2]);
+                    int ActionId = int.Parse(Actions[1]);
+                    Console.WriteLine("CAST " + ActionId + " " + times +  " Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                }
+                else if(Output[0].Contains("Learn")){
+                    int ActionId = int.Parse(Output[0].Split(" ")[1]);
+                    Console.WriteLine("LEARN " + ActionId + " Yay!!!! Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                    Learned = ActionId;
+                }
+                else{
+                    int ActionId = int.Parse(Output[0]);
+                    Console.WriteLine("CAST " + ActionId + " Time: "+ (DateTime.Now.Millisecond - TimeNow));
+                }
             }
         }
-        Learned = -1;
     }
 
-    //inventory
-    let CurrIngrMe = [];
-    //let CurrIngrOpponent = [];
-    for (let i = 0; i < 2; i++) {
-        var inputs = readline().split(' ');
-        const inv0 = parseInt(inputs[0]); // tier-0 ingredients in inventory
-        const inv1 = parseInt(inputs[1]);
-        const inv2 = parseInt(inputs[2]);
-        const inv3 = parseInt(inputs[3]);
-        const score = parseInt(inputs[4]); // amount of rupees
-        if(i == 0){
-            CurrIngrMe = [inv0, inv1, inv2, inv3];
-            if(score != OldScoreMe){
-                OldScoreMe = score;
-                NumberOfPotionsMadeByMe++;
-            }
+    static void Recursive(int[] CurrIngreds, Node<Spell> FirstCastOrdersMe, Node<LearnSpell> FirstLearningAbleCast, int depth, string[] Path){
+
+        if(DateTime.Now.Millisecond - TimeNow >= 48){
+            return;
         }
-        else{
-            //CurrIngrOpponent = [inv0, inv1, inv2, inv3];
-            if(score != OldScoreOp){
-                OldScoreOp = score;
-                NumberOfPotionsMadeByOp++;
-            }
+
+        /*if(HaveThisInventoryAlready(CurrIngreds)){
+            Console.Error.WriteLine("ReduceTime!!!!")
+            return;
         }
+
+        let S = "" + CurrIngreds;
+
+        InventoryRecursive.push(S);*/
+
+        if(depth == 0){
+            return;
+        }
+
+        //let SavedPath = Path.slice();
+
+        Node<Spell> CastOrderMe = FirstCastOrdersMe;
+
+        while(CastOrderMe != null){
+            int NumberOfCasts = 1;
+            
+        }
+
     }
 
-    if(IsTargetExist == false || IsLearnExist == false){
-        Commands = [];
-    }
-
-    //console.error(LearningAbleCast)
-
-    if(CanCastFromAllIngrs == false)
-        CanCastFromAllIngrs = CanCastFromAllIngredients(CastOrdersMe);
-
-    if((Learn > 0 || CanCastFromAllIngrs == false) && Learn > 0){
-        console.log("LEARN " + LearningAbleCast[0].actionId)
-        Learn--;
-        continue;
-    }
-
-
-    let Output = CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe);
-    if(Output[1] == false){
-        let Index = Output[0];
-        if(Index != -1 && CastOrdersMe[Index].castable == true){
-            console.log("CAST " + CastOrdersMe[Index].actionId + " Time: "+ (Date.now() - TimeNow));
-        }
-        else{
-            console.log("REST Time: "+ (Date.now() - TimeNow));
-        }
-    }
-    else{
-        console.error();
-        console.error("Price: "+CommandsPrice);
-        if(Output[0] == "Rest"){
-            console.log("REST Time: "+ (Date.now() - TimeNow));
-        }
-        else if(typeof Output[0] == "string" && Output[0].includes("Brew")){
-            let ActionId = parseInt(Output[0].split(' ')[1]);
-            console.log("BREW " + ActionId + " Time: "+ (Date.now() - TimeNow));
-        }
-        else if(typeof Output[0] == "string" && Output[0].includes("CAST")){
-            let Actions = Output[0].split(' ');
-            let times = parseInt(Actions[2]);
-            let ActionId = parseInt(Actions[1]);
-            console.log("CAST " + ActionId + " " + times +  " Time: "+ (Date.now() - TimeNow));
-        }
-        else if(typeof Output[0] == "string" && Output[0].includes("Learn")){
-            let ActionId = parseInt(Output[0].split(" ")[1]);
-            console.log("LEARN " + ActionId + " Yay!!!! Time: "+ (Date.now() - TimeNow));
-            Learned = ActionId;
-        }
-        else{
-            let ActionId = Output[0];
-            console.log("CAST " + ActionId + " Time: "+ (Date.now() - TimeNow));
-        }
-    }
-
-    // Write an action using console.log()
-    // To debug: console.error('Debug messages...');
-
-
-    // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
 }
 
-function Recursive(CurrIngreds, CastOrders, LearningAbleCast, depth, Path){
-
-    if(Date.now() - TimeNow >= 48){
-        return;
-    }
-
-    /*if(HaveThisInventoryAlready(CurrIngreds)){
-        console.error("ReduceTime!!!!")
-        return;
-    }
-
-    let S = "" + CurrIngreds;
-
-    InventoryRecursive.push(S);*/
-
-    if(depth == 0){
-        return;
-    }
-
-    let SavedPath = Path.slice();
-
-
-    for(let i = 0; i < CastOrders.length; i++){
-        let NumberOfCasts = 1;
+/*
         if(CastOrders[i].castable == false){
             while(true){
                 let mone = 1;
@@ -373,9 +523,9 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe
     //else if(CastOrdersMe. length <= 30)
     //    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 3, []);
 
-    console.error("Commands: ")
-    console.error(Commands)
-    console.error()
+    Console.Error.WriteLine("Commands: ")
+    Console.Error.WriteLine(Commands)
+    Console.Error.WriteLine()
 
     if(NumberOfPotionsMadeByOp == 5 || NumberOfPotionsMadeByMe == 5){
         if(OldScoreMe > OldScoreOp){
@@ -387,8 +537,8 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe
             PossiblesPaths.sort((a,b) => {
                 return a.Path.length - b.Path.length;
             });
-            //console.error("shortest PossiblesPaths: ");
-            //console.error(PossiblesPaths);
+            //Console.Error.WriteLine("shortest PossiblesPaths: ");
+            //Console.Error.WriteLine(PossiblesPaths);
             if(PossiblesPaths.length > 0){
                 let BestPath = PossiblesPaths[0].Path;
                 let BestPrice = PossiblesPaths[0].Price;
@@ -413,8 +563,8 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe
         return (b.Price / b.Path.length) - (a.Price / a.Path.length);
     });
 
-    console.error("PossiblesPaths: ");
-    console.error(PossiblesPaths);   
+    Console.Error.WriteLine("PossiblesPaths: ");
+    Console.Error.WriteLine(PossiblesPaths);   
 
     if(PossiblesPaths.length > 0){
         let BestPath = PossiblesPaths[0].Path;
@@ -427,7 +577,7 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe
         }
         else{
             if((BestPrice / BestPath.length) > (CommandsPrice / Commands.length)){
-                //console.error("CHANGE!!!!!!!!!!!!!!")
+                //Console.Error.WriteLine("CHANGE!!!!!!!!!!!!!!")
                 Commands = BestPath;
                 CommandsPrice = BestPrice;
                 return [Commands.splice(0,1)[0], true];
@@ -454,7 +604,7 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe
         }
     }
 
-    return [Index, false];*/
+    return [Index, false];
 
     let Min = 100;
 
@@ -549,7 +699,7 @@ function CanCastFromAllIngredients(CastOrdersMe){
         }
     }
     return -1;
-}*/
+}
 
 function GetSumIngredients(Ingredients1, Ingredients2){
 
@@ -573,3 +723,5 @@ function GetSumIngredients(Ingredients1, Ingredients2){
 
     return arr;
 }
+
+*/
