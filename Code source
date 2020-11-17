@@ -109,7 +109,7 @@ class Player
 
         Node<string> FirstCommand = null;
         int CommandsPrice = 0;
-        Node<string> PossiblesPaths = null;
+        Node<Node<string>> FirstPossiblesPaths = null;
 
         int OldScoreOp = 0;
         int OldScoreMe = 0;
@@ -326,7 +326,7 @@ class Player
         }
     }
 
-    static void Recursive(int[] CurrIngreds, Node<Spell> FirstCastOrdersMe, Node<LearnSpell> FirstLearningAbleCast, int depth, string[] Path){
+    static void Recursive(int[] CurrIngreds, Node<Spell> FirstCastOrdersMe, Node<LearnSpell> FirstLearningAbleCast, int depth, Node<string> FirstStepPath){
 
         if(DateTime.Now.Millisecond - TimeNow >= 48){
             return;
@@ -351,46 +351,100 @@ class Player
 
         while(CastOrderMe != null){
             int NumberOfCasts = 1;
-            
+            if(CastOrderMe.value.castable == false){
+                while(true){
+                    int mone = 1;
+                    if(NumberOfCasts > 1 && CastOrderMe.value.repeatable == false){
+                        break;
+                    }
+                    int[] SumIngerds = GetSumIngredients(CastOrderMe.value.ingredients, CurrIngreds);
+                    while(mone != NumberOfCasts){
+                        SumIngerds = GetSumIngredients(CastOrderMe.value.ingredients, SumIngerds);
+                        mone++;
+                    }
+
+                    if(SumIngerds != null){
+                        int[] actionIdAndPrice = CanIBrewSpell(SumIngerds);
+                        int actionId = actionIdAndPrice[0];
+                        Node<string> LastStepPath = FirstStepPath.GetLastNode(FirstStepPath);
+                        LastStepPath.Next.value = "Rest";
+                        LastStepPath = LastStepPath.Next;
+                        if(NumberOfCasts == 1)
+                            LastStepPath.Next.value = "" + CastOrderMe.value.actionId;
+                        else
+                            LastStepPath.Next.value = "CAST " + CastOrderMe.value.actionId + " " + NumberOfCasts;
+
+                        if(actionId != -1){
+                            LastStepPath = LastStepPath.Next;
+                            LastStepPath.Next.value = "Brew " + actionId;
+                            int Price = actionIdAndPrice[1];
+                            int SavedPrice = Price;
+
+                            Node<Node<string>> PossiblesPaths = FirstPossiblesPaths;
+
+                            while(Price != 0){
+                                PossiblesPaths = PossiblesPaths.Next;
+                                Price--;
+                            }
+
+                            if(PossiblesPaths[Price] == undefined){
+                                PossiblesPaths[Price] = {Path, Price};
+                            }
+                            else if(PossiblesPaths[Price].length > Path.length){
+                                PossiblesPaths[Price] = {Path, Price};
+                            }
+                            Path = SavedPath.slice();
+                        }
+                    }
+                }
+            }
         }
 
     }
 
+    static int[] GetSumIngredients(int[] Ingredients1, int[] Ingredients2){
+
+        int[] arr = new int[4];
+        int sum = 0;
+
+        for(int i = 0; i < Ingredients2.Length; i++){
+            arr[i] = Ingredients2[i] + Ingredients1[i];
+            sum += arr[i];
+            if(arr[i] < 0){
+                //I have negative ingredients
+                return null;
+            }
+        }
+
+        //Check if there are more than 10 ingredients 
+        return sum > 10 ? null : arr;
+    }
+
+    static int[] CanIBrewSpell(int[] CurrIngrMe){
+
+        int ActionId = -1;
+        int MaxPrice = 0;
+
+        Node<Order> BrewOrder = FirstBrewOrders;
+
+        while(BrewOrder != null){
+            int price = BrewOrder.value.price;
+
+            if(GetSumIngredients(BrewOrder.value.ingredients, CurrIngrMe) != null
+            && price > MaxPrice){
+                MaxPrice = price;
+                ActionId = BrewOrder.value.actionId;
+            }
+            BrewOrder = BrewOrder.Next;
+        }
+        return [ActionId, MaxPrice];
+    }
+
 }
 
-/*
-        if(CastOrders[i].castable == false){
-            while(true){
-                let mone = 1;
-                if(NumberOfCasts > 1 && CastOrders[i].repeatable == false){
-                    break;
-                }
-                let SumIngerds = GetSumIngredients(CastOrders[i].ingredients, CurrIngreds);
-                while(mone != NumberOfCasts){
-                    SumIngerds = GetSumIngredients(CastOrders[i].ingredients, SumIngerds);
-                    mone++;
-                }
-
-                if(SumIngerds != undefined){
-                    let Index = CanIBrewSpell(SumIngerds);
-                    Path.push("Rest");
-                    if(NumberOfCasts == 1)
-                        Path.push(CastOrders[i].actionId);
-                    else
-                        Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
-                    if(Index != -1){
-                        let Brew = "Brew " + BrewOrders[Index].actionId;
-                        Path.push(Brew);
-                        let Price = BrewOrders[Index].price;
-
-                        if(PossiblesPaths[Price] == undefined){
-                            PossiblesPaths[Price] = {Path, Price};
-                        }
-                        else if(PossiblesPaths[Price].length > Path.length){
-                            PossiblesPaths[Price] = {Path, Price};
-                        }
-                        Path = SavedPath.slice();
-                    }
+/*     
+                    
+                    
                     else{
                         Recursive(SumIngerds, CastOrders, LearningAbleCast, depth - 1, Path);
                         Path = SavedPath.slice();
@@ -657,24 +711,6 @@ function HaveThisInventoryAlready(CurrIngreds){
 }
 
 
-function CanIBrewSpell(CurrIngrMe){
-
-    let Index = -1;
-    let MaxPrice = 0;
-
-    for(let i = 0; i < BrewOrders.length; i++){
-        let price = BrewOrders[i].price;
-
-        let SumIngredients = GetSumIngredients(BrewOrders[i].ingredients, CurrIngrMe);
-        if(SumIngredients != undefined && 
-           price > MaxPrice){
-            MaxPrice = price;
-            Index = i;
-        }
-    }
-    return Index;
-}
-
 function CanCastFromAllIngredients(CastOrdersMe){
 
     let CanCastIngrs = Array(4).fill(0);
@@ -699,29 +735,6 @@ function CanCastFromAllIngredients(CastOrdersMe){
         }
     }
     return -1;
-}
-
-function GetSumIngredients(Ingredients1, Ingredients2){
-
-    let arr = [];
-    let sum = 0;
-
-    for(let i = 0; i < Ingredients2.length; i++){
-        arr[i] = Ingredients2[i] + Ingredients1[i];
-        sum += arr[i];
-    }
-
-    //Check if there are more than 10 ingredients
-    if(sum > 10){
-        return undefined;
-    }
-
-    //I have negative ingredients
-    if(arr.every(x => x >= 0) == false){
-        return undefined;
-    }
-
-    return arr;
 }
 
 */
