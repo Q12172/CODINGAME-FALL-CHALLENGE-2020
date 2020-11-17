@@ -3,7 +3,13 @@
  * the standard input according to the problem statement.
  **/
 
-let Learn = 9;
+let Learned = -1;
+
+let InventoryRecursive = [];
+
+let BrewOrders = [];
+
+let Learn = 8;
 
 let CanCastFromAllIngrs = false;
 
@@ -17,14 +23,23 @@ let OldScoreMe = 0;
 let NumberOfPotionsMadeByMe = 0;
 let NumberOfPotionsMadeByOp = 0;
 
+let TimeNow = 0;
+
 // game loop
 while (true) {
     let IsTargetExist = false;
+    let IsLearnExist = true;
+    for(let i = 0; i < Commands.length; i++){
+        if(typeof Commands[i] == "string" && Commands[i].includes("Learn")){
+            IsLearnExist = false;
+            break;
+        }
+    }
     const actionCount = parseInt(readline()); // the number of spells and recipes in play
-    let TimeNow = Date.now();
-    let BrewOrders = [];
+    TimeNow = Date.now();
+    BrewOrders = [];
     let CastOrdersMe = [];
-    let CastOrdersOpponent = [];
+    //let CastOrdersOpponent = [];
     let LearningAbleCast = [];
     for (let i = 0; i < actionCount; i++) {
         var inputs = readline().split(' ');
@@ -44,8 +59,8 @@ while (true) {
             CastOrdersMe.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
         }
         else if(actionType == "OPPONENT_CAST"){
-            let Free = delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0;
-            CastOrdersOpponent.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
+            //let Free = delta0 >= 0 && delta1 >= 0 && delta2 >= 0 && delta3 >= 0;
+            //CastOrdersOpponent.push({castable, ingredients: [delta0, delta1, delta2, delta3], actionId, Free, repeatable});
         }
         else if(actionType == "BREW"){
             if(Commands.length != 0 && parseInt(Commands[Commands.length - 1].split(' ')[1]) == actionId){
@@ -54,14 +69,39 @@ while (true) {
             BrewOrders.push({ingredients: [delta0, delta1, delta2, delta3], price, actionId});
         }
         else{
+            if(IsLearnExist == false){
+                for(let i = 0; i < Commands.length; i++){
+                    if(typeof Commands[i] == "string" && Commands[i].includes("Learn")){
+                        if(actionId == parseInt(Commands[i].split(' ')[1])){
+                            IsLearnExist = true;
+                            break;
+                        }
+                    }
+                }
+            }
             //Learn
-            LearningAbleCast.push({tomeIndex, ingredients: [delta0, delta1, delta2, delta3], taxCount, actionId})
+            LearningAbleCast.push({tomeIndex, ingredients: [delta0, delta1, delta2, delta3], taxCount, actionId, repeatable, castable})
         }
     }
 
+    if(Learned != -1){
+        for(let i = 0; i < Commands.length; i++){
+            if(Commands[i] == Learned){
+                Commands[i] = CastOrdersMe[CastOrdersMe.length - 1].actionId;
+            }
+            else if(typeof Commands[i] == "string" && Commands[i].includes("CAST")){
+                let Actions = Commands[i].split(' ');
+                let ActionId = parseInt(Actions[1]);
+                if(ActionId == Learned)
+                    Commands[i] = "CAST " + CastOrdersMe[CastOrdersMe.length - 1].actionId + " " + parseInt(Actions[2]);
+            }
+        }
+        Learned = -1;
+    }
+
     //inventory
-    let CurrIngrMe = Array(4).fill(0);
-    let CurrIngrOpponent = Array(4).fill(0);
+    let CurrIngrMe = [];
+    //let CurrIngrOpponent = [];
     for (let i = 0; i < 2; i++) {
         var inputs = readline().split(' ');
         const inv0 = parseInt(inputs[0]); // tier-0 ingredients in inventory
@@ -77,7 +117,7 @@ while (true) {
             }
         }
         else{
-            CurrIngrOpponent = [inv0, inv1, inv2, inv3];
+            //CurrIngrOpponent = [inv0, inv1, inv2, inv3];
             if(score != OldScoreOp){
                 OldScoreOp = score;
                 NumberOfPotionsMadeByOp++;
@@ -85,7 +125,7 @@ while (true) {
         }
     }
 
-    if(IsTargetExist == false){
+    if(IsTargetExist == false || IsLearnExist == false){
         Commands = [];
     }
 
@@ -94,18 +134,14 @@ while (true) {
     if(CanCastFromAllIngrs == false)
         CanCastFromAllIngrs = CanCastFromAllIngredients(CastOrdersMe);
 
-    if(Learn > 0 || CanCastFromAllIngrs == false){
+    if((Learn > 0 || CanCastFromAllIngrs == false) && Learn > 0){
         console.log("LEARN " + LearningAbleCast[0].actionId)
         Learn--;
         continue;
     }
 
 
-    let Output = CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe);
-    /*console.error();
-    console.error("Output: ");
-    console.error(Output);
-    console.error();*/
+    let Output = CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe);
     if(Output[1] == false){
         let Index = Output[0];
         if(Index != -1 && CastOrdersMe[Index].castable == true){
@@ -116,8 +152,8 @@ while (true) {
         }
     }
     else{
-        //console.error();
-        //console.error("Price: "+CommandsPrice);
+        console.error();
+        console.error("Price: "+CommandsPrice);
         if(Output[0] == "Rest"){
             console.log("REST Time: "+ (Date.now() - TimeNow));
         }
@@ -131,15 +167,14 @@ while (true) {
             let ActionId = parseInt(Actions[1]);
             console.log("CAST " + ActionId + " " + times +  " Time: "+ (Date.now() - TimeNow));
         }
+        else if(typeof Output[0] == "string" && Output[0].includes("Learn")){
+            let ActionId = parseInt(Output[0].split(" ")[1]);
+            console.log("LEARN " + ActionId + " Yay!!!! Time: "+ (Date.now() - TimeNow));
+            Learned = ActionId;
+        }
         else{
             let ActionId = Output[0];
-            if(ActionId == Commands[0]){
-                console.error("LEARN")
-                console.log("LEARN " + ActionId + " Time: "+ (Date.now() - TimeNow));
-            }
-            else{
-                console.log("CAST " + ActionId + " Time: "+ (Date.now() - TimeNow));
-            }
+            console.log("CAST " + ActionId + " Time: "+ (Date.now() - TimeNow));
         }
     }
 
@@ -150,7 +185,20 @@ while (true) {
     // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
 }
 
-function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth, Path){
+function Recursive(CurrIngreds, CastOrders, LearningAbleCast, depth, Path){
+
+    if(Date.now() - TimeNow >= 49){
+        return;
+    }
+
+    /*if(HaveThisInventoryAlready(CurrIngreds)){
+        console.error("ReduceTime!!!!")
+        return;
+    }
+
+    let S = "" + CurrIngreds;
+
+    InventoryRecursive.push(S);*/
 
     if(depth == 0){
         return;
@@ -174,40 +222,16 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                 }
 
                 if(SumIngerds != undefined){
-                    let Index = CanIBrewSpell(SumIngerds, BrewOrders);
+                    let Index = CanIBrewSpell(SumIngerds);
+                    Path.push("Rest");
+                    if(NumberOfCasts == 1)
+                        Path.push(CastOrders[i].actionId);
+                    else
+                        Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
                     if(Index != -1){
-                        Path.push("Rest");
-                        if(NumberOfCasts == 1)
-                            Path.push(CastOrders[i].actionId);
-                        else
-                            Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
                         let Brew = "Brew " + BrewOrders[Index].actionId;
                         Path.push(Brew);
                         let Price = BrewOrders[Index].price;
-                        //console.error("Path: ")
-                        //console.error(Path)
-                        /*for(let j = 0; j < Path.length - 1; j++){
-                            if(typeof Path[j] == "number" && Path[j + 1] == "Rest"){
-                                let mone = 1;
-                                let Num = Path[j];
-                                if(CastOrders[GetIndexOfId(CastOrders, Num)].repeatable == false){
-                                    continue;
-                                }
-                                let SavedJ = j + 2;
-                                while(SavedJ < Path.length - 1 && Path[SavedJ] == Num){
-                                    mone++;
-                                    SavedJ+=2;
-                                }
-
-                                SavedJ--;
-
-                                if(mone > 1){
-                                    Path.splice(j + 1, mone * 2 - 2);
-                                    Path[j] = "CAST " + Num + " " + mone;
-                                    check = true;
-                                }
-                            }
-                        }*/
 
                         if(PossiblesPaths[Price] == undefined){
                             PossiblesPaths[Price] = {Path, Price};
@@ -218,12 +242,7 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                         Path = SavedPath.slice();
                     }
                     else{
-                        Path.push("Rest");
-                        if(NumberOfCasts == 1)
-                            Path.push(CastOrders[i].actionId);
-                        else
-                            Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
-                        Recursive(SumIngerds, BrewOrders, CastOrders, LearningAbleCast, depth - 1, Path);
+                        Recursive(SumIngerds, CastOrders, LearningAbleCast, depth - 1, Path);
                         Path = SavedPath.slice();
                     }
 
@@ -247,37 +266,16 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                 }
 
                 if(SumIngerds != undefined){
-                    let Index = CanIBrewSpell(SumIngerds, BrewOrders);
+                    let Index = CanIBrewSpell(SumIngerds);
+                    if(NumberOfCasts == 1)
+                        Path.push(CastOrders[i].actionId);
+                    else
+                        Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
+
                     if(Index != -1){
-                        if(NumberOfCasts == 1)
-                            Path.push(CastOrders[i].actionId);
-                        else
-                            Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
                         let Brew = "Brew " + BrewOrders[Index].actionId;
                         Path.push(Brew);
                         let Price = BrewOrders[Index].price;
-                        /*for(let j = 0; j < Path.length - 1; j++){
-                            if(typeof Path[j] == "number" && Path[j + 1] == "Rest"){
-                                let mone = 1;
-                                let Num = Path[j];
-                                if(CastOrders[GetIndexOfId(CastOrders, Num)].repeatable == false){
-                                    continue;
-                                }
-                                let SavedJ = j + 2;
-                                while(SavedJ < Path.length - 1 && Path[SavedJ] == Num){
-                                    mone++;
-                                    SavedJ+=2;
-                                }
-
-                                SavedJ--;
-
-                                if(mone > 1){
-                                    Path.splice(j + 1, mone * 2 - 2);
-                                    Path[j] = "CAST " + Num + " " + mone;
-                                    check = true;
-                                }
-                            }
-                        }*/
 
                         if(PossiblesPaths[Price] == undefined){
                             PossiblesPaths[Price] = {Path, Price};
@@ -288,13 +286,8 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
                         Path = SavedPath.slice();
                     }
                     else{
-                        if(NumberOfCasts == 1)
-                            Path.push(CastOrders[i].actionId);
-                        else
-                            Path.push("CAST " + CastOrders[i].actionId + " " + NumberOfCasts);
-                        let CastList = CastOrders.slice();
                         CastOrders[i].castable = false;
-                        Recursive(SumIngerds, BrewOrders, CastList, LearningAbleCast, depth - 1, Path);
+                        Recursive(SumIngerds, CastOrders, LearningAbleCast, depth - 1, Path);
                         CastOrders[i].castable = true;
                         Path = SavedPath.slice();
                     }
@@ -308,81 +301,81 @@ function Recursive(CurrIngreds, BrewOrders, CastOrders, LearningAbleCast, depth,
         }
     }
 
-    /*for(let i = 0; i < LearningAbleCast.length; i++){
+    for(let i = 0; i < LearningAbleCast.length; i++){
+        let NumberOfCasts = 1;
         if(LearningAbleCast[i].tomeIndex > CurrIngreds[0]){
             continue;
         }
-        let TempCurrIngreds = CurrIngreds.slice();
-        TempCurrIngreds[0] -= LearningAbleCast[i].tomeIndex;
-        let SumIngerds = GetSumIngredients(LearningAbleCast[i].ingredients, TempCurrIngreds);
-        if(SumIngerds != undefined){
-            let Index = CanIBrewSpell(SumIngerds, BrewOrders);
-            if(Index != -1){
+        while(true){
+            let mone = 1;
+            if(NumberOfCasts > 1 && LearningAbleCast[i].repeatable == false){
+                break;
+            }
+            CurrIngreds[0] -= LearningAbleCast[i].tomeIndex;
+            let SumIngerds = GetSumIngredients(LearningAbleCast[i].ingredients, CurrIngreds);
+            CurrIngreds[0] += LearningAbleCast[i].tomeIndex;
+            while(mone != NumberOfCasts){
+                SumIngerds = GetSumIngredients(LearningAbleCast[i].ingredients, SumIngerds);
+                mone++;
+            }
+
+            if(SumIngerds != undefined){
+                let Index = CanIBrewSpell(SumIngerds);
                 //Learn
-                Path.push(LearningAbleCast[i].actionId);
+                let Learn = "Learn " + LearningAbleCast[i].actionId;
+                Path.push(Learn);
                 //Cast
-                Path.push(LearningAbleCast[i].actionId);
-                let Brew = "Brew " + BrewOrders[Index].actionId;
-                Path.push(Brew);
-                let Price = BrewOrders[Index].price;
-                if(PossiblesPaths[Price] == undefined){
-                    PossiblesPaths[Price] = {Path, Price};
+                if(NumberOfCasts == 1)
+                    Path.push(LearningAbleCast[i].actionId);
+                else
+                    Path.push("CAST " +  LearningAbleCast[i].actionId + " " + NumberOfCasts);
+                if(Index != -1){
+                    let Brew = "Brew " + BrewOrders[Index].actionId;
+                    Path.push(Brew);
+                    let Price = BrewOrders[Index].price;
+                    if(PossiblesPaths[Price] == undefined){
+                        PossiblesPaths[Price] = {Path, Price};
+                    }
+                    else if(PossiblesPaths[Price].length > Path.length){
+                        PossiblesPaths[Price] = {Path, Price};
+                    }
+                    Path = SavedPath.slice();
                 }
-                else if(PossiblesPaths[Price].length > Path.length){
-                    PossiblesPaths[Price] = {Path, Price};
+                else{
+                    let ListLearningAbleCast = LearningAbleCast.slice();
+                    let LearnedSpell = ListLearningAbleCast.splice(i,1)[0];
+                    LearnedSpell.castable = false;
+                    CastOrders.push(LearnedSpell);
+                    Recursive(SumIngerds, CastOrders, ListLearningAbleCast, depth - 1, Path);
+                    Path = SavedPath.slice();
+                    CastOrders.splice(CastOrders.length - 1,1);
                 }
-                Path = SavedPath.slice();
             }
             else{
-                //Learn
-                Path.push(LearningAbleCast[i].actionId);
-                //Cast
-                Path.push(LearningAbleCast[i].actionId);
-                let ListLearningAbleCast = LearningAbleCast.slice();
-                ListLearningAbleCast.splice(i,1);
-                CastOrders.push(LearningAbleCast[i]);
-                CastOrders[CastOrders.length - 1].castable = false;
-                Recursive(SumIngerds, BrewOrders, CastOrders, ListLearningAbleCast, depth - 1, Path);
-                Path = SavedPath.slice();
-                CastOrders.splice(CastOrders.length - 1,1);
+                break;
             }
-        }
-    }*/
-}
 
-function CanIBrewSpell(CurrIngrMe, BrewOrders){
-
-    let Index = -1;
-    let MaxPrice = 0;
-
-    for(let i = 0; i < BrewOrders.length; i++){
-        let ingrs = BrewOrders[i].ingredients;
-        let price = BrewOrders[i].price;
-
-        let SumIngredients = GetSumIngredients(ingrs, CurrIngrMe);
-        if(SumIngredients != undefined && 
-           price > MaxPrice){
-            MaxPrice = price;
-            Index = i;
+            NumberOfCasts++;
         }
     }
-    return Index;
 }
 
-function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, CastOrdersMe){
+function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe){
 
     PossiblesPaths = [];
-        
-    //if(CastOrdersMe. length <= 11)
-      //  Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 5, []);
-    if(CastOrdersMe. length <= 13)//else if(CastOrdersMe. length <= 14)
-        Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 4, []);
-    else if(CastOrdersMe. length <= 22)
-        Recursive(CurrIngrMe, BrewOrders, CastOrdersMe, LearningAbleCast, 3, []);
 
-    //console.error("Commands: ")
-    //console.error(Commands)
-    //console.error()
+    InventoryRecursive = [];
+
+    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 5, []);
+        
+    //if(CastOrdersMe. length <= 12)
+    //    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 4, []);
+    //else if(CastOrdersMe. length <= 30)
+    //    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 3, []);
+
+    console.error("Commands: ")
+    console.error(Commands)
+    console.error()
 
     if(NumberOfPotionsMadeByOp == 5 || NumberOfPotionsMadeByMe == 5){
         if(OldScoreMe > OldScoreOp){
@@ -420,8 +413,8 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, 
         return (b.Price / b.Path.length) - (a.Price / a.Path.length);
     });
 
-    //console.error("PossiblesPaths: ");
-    //console.error(PossiblesPaths);   
+    console.error("PossiblesPaths: ");
+    console.error(PossiblesPaths);   
 
     if(PossiblesPaths.length > 0){
         let BestPath = PossiblesPaths[0].Path;
@@ -444,7 +437,7 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, 
         }
     }
 
-    let Max = 0;
+    /*let Max = 0;
 
     let Index = -1;
     
@@ -461,9 +454,9 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, 
         }
     }
 
-    return [Index, false];
+    return [Index, false];*/
 
-    /*let Min = 100;
+    let Min = 100;
 
     let Index = -1;
 
@@ -497,7 +490,39 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, BrewOrders, 
         }
     }
 
-    return [Index, false];*/
+    return [Index, false];
+}
+
+function HaveThisInventoryAlready(CurrIngreds){
+
+    let s = "" + CurrIngreds;
+
+    for(let i = 0; i < InventoryRecursive.length; i++){
+        if(InventoryRecursive == s){
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+function CanIBrewSpell(CurrIngrMe){
+
+    let Index = -1;
+    let MaxPrice = 0;
+
+    for(let i = 0; i < BrewOrders.length; i++){
+        let price = BrewOrders[i].price;
+
+        let SumIngredients = GetSumIngredients(BrewOrders[i].ingredients, CurrIngrMe);
+        if(SumIngredients != undefined && 
+           price > MaxPrice){
+            MaxPrice = price;
+            Index = i;
+        }
+    }
+    return Index;
 }
 
 function CanCastFromAllIngredients(CastOrdersMe){
@@ -516,7 +541,7 @@ function CanCastFromAllIngredients(CastOrdersMe){
     return CanCastIngrs.every(x => x == 1);
 }
 
-function GetIndexOfId(set, id){
+/*function GetIndexOfId(set, id){
 
     for(let i = 0; i < set.length; i++){
         if(set[i].actionId == id){
@@ -524,7 +549,7 @@ function GetIndexOfId(set, id){
         }
     }
     return -1;
-}
+}*/
 
 function GetSumIngredients(Ingredients1, Ingredients2){
 
