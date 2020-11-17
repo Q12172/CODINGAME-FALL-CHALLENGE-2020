@@ -187,7 +187,7 @@ while (true) {
 
 function Recursive(CurrIngreds, CastOrders, LearningAbleCast, depth, Path){
 
-    if(Date.now() - TimeNow >= 49){
+    if(Date.now() - TimeNow >= 48){
         return;
     }
 
@@ -366,7 +366,7 @@ function CanICastIngrAndThenBrewSpell(LearningAbleCast, CurrIngrMe, CastOrdersMe
 
     InventoryRecursive = [];
 
-    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 5, []);
+    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 4, []);
         
     //if(CastOrdersMe. length <= 12)
     //    Recursive(CurrIngrMe, CastOrdersMe, LearningAbleCast, 4, []);
