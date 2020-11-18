@@ -1,0 +1,348 @@
+using System;
+using System.Linq;
+using System.IO;
+using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+
+/**
+ * Auto-generated code below aims at helping you parse
+ * the standard input according to the problem statement.
+ **/
+
+class GameReader
+{
+    public static Game ReadGame()
+    {
+        var game = new Game();
+        int actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
+        for (int i = 0; i < actionCount; i++)
+        {
+            var inputs = Console.ReadLine().Split(' ');
+            int actionId = int.Parse(inputs[0]); // the unique ID of this spell or recipe
+            string actionType = inputs[1]; // in the first league: BREW; later: CAST, OPPONENT_CAST, LEARN, BREW
+            int delta0 = int.Parse(inputs[2]); // tier-0 ingredient change
+            int delta1 = int.Parse(inputs[3]); // tier-1 ingredient change
+            int delta2 = int.Parse(inputs[4]); // tier-2 ingredient change
+            int delta3 = int.Parse(inputs[5]); // tier-3 ingredient change
+            int value = int.Parse(inputs[6]); // the price in rupees if this is a potion
+            int tomeIndex = int.Parse(inputs[7]); // in the first two leagues: always 0; later: the index in the tome if this is a tome spell, equal to the read-ahead tax; For brews, this is the value of the current urgency bonus
+            int taxCount = int.Parse(inputs[8]); // in the first two leagues: always 0; later: the amount of taxed tier-0 ingredients you gain from learning this spell; For brews, this is how many times you can still gain an urgency bonus
+            bool castable = inputs[9] != "0"; // in the first league: always 0; later: 1 if this is a castable player spell
+            bool repeatable = inputs[10] != "0"; // for the first two leagues: always 0; later: 1 if this is a repeatable player spell
+            
+            if(actionType == "BREW")
+            {
+                game.Customers.Add(new Customer(inputs));
+            }
+            else if(actionType == "CAST"){
+                game.Me.Spells.Add(new Spell(inputs));
+            }
+            else if(actionType == "LEARN"){
+                game.Spells.Add(new Spell(inputs));
+            }
+        }
+        for (int i = 0; i < 2; i++)
+        {
+            var inputs = Console.ReadLine().Split(' ');
+            game.Players[i].Initialize(inputs);
+        }
+
+        game.Customers[0].Value += 3;
+        game.Customers[1].Value += 1;
+
+        return game;
+    }
+}
+
+class Agent
+{
+    private readonly Game game;
+
+    public Agent(Game game)
+    {
+        this.game = game;
+    } 
+
+    public string Think()
+    {
+        if(GetAffordableCustomer(out var customer)) return customer.ToString();
+        if(LearnSpells(out var tomeSpell)) return tomeSpell.ToString();
+        if(HasDoableSpell(out var spell)) return spell.ToString();
+
+        return "REST";
+    }
+
+    private bool LearnSpells(out Spell result)
+    {
+        if(game.Me.Spells.Count < 10)
+        foreach(var spell in game.Spells.OrderByDescending(s => s.Evaluate(game.Me.Spells)))
+        {
+            if(spell.CanAfford(game.Me.Inventory))
+            {
+                result = spell;
+                return true;
+            }
+        }
+
+        result = null;
+        return false;
+    }
+
+    private bool HasDoableSpell(out Spell result)
+    {
+        var needed = new int[4];
+        foreach(var customer in game.Customers)
+        {
+            for(var i = 0; i < 4; i++)
+            {
+                needed[i] = Math.Max(needed[i], Math.Abs(customer.Cost[i]));
+            }
+        }
+        for(var i = 0; i < 4; i++)
+        {
+            needed[i] -= game.Me.Inventory[i];
+        }
+        foreach(var spell in game.Me.Spells)
+        {   
+            if(spell.Castable &&
+            game.Me.CanAfford(spell.Cost) && 
+            game.Me.SumIngredients + spell.SumIngredients <= 10)
+            {
+                result = spell;
+                return true;
+            }
+        }
+
+        result = null;
+        return false;
+    }
+
+    private bool GetAffordableCustomer(out Customer result)
+    {
+        var gain = game.Me.GetGain();
+        foreach(var customer in game.Customers.OrderByDescending(c => c.Evaluate(gain)).Take(1))
+        {
+            if(game.Me.CanAfford(customer.Cost))
+            {
+                result = customer;
+                return true;
+            }
+        }
+
+        result = null;
+        return false;
+    }
+}
+
+class Game
+{
+    public Player[] Players = new Player[2] {new Player(), new Player()};
+
+    public List<Customer> Customers = new List<Customer>();
+    public Player Me => Players[0];
+    public List<Spell> Spells = new List<Spell>();
+}
+
+class Spell
+{
+    public int[] Cost = new int[4];
+    public int Id, TaxCost, TaxGain;
+    public bool Castable, Repetable, Learnable;
+    public int SumIngredients => Cost.Sum();
+
+    public Spell(string[] inputs)
+    {
+        for(var i = 0; i < 4; i++)
+        {
+            Cost[i] = int.Parse(inputs[i + 2]);
+        }
+
+        Id = int.Parse(inputs[0]); // the unique ID of this spell or recipe
+        string actionType = inputs[1]; // in the first league: BREW; later: CAST, OPPONENT_CAST, LEARN, BREW
+        int delta0 = int.Parse(inputs[2]); // tier-0 ingredient change
+        int delta1 = int.Parse(inputs[3]); // tier-1 ingredient change
+        int delta2 = int.Parse(inputs[4]); // tier-2 ingredient change
+        int delta3 = int.Parse(inputs[5]); // tier-3 ingredient change
+        int value = int.Parse(inputs[6]); // the price in rupees if this is a potion
+        TaxCost = int.Parse(inputs[7]); // in the first two leagues: always 0; later: the index in the tome if this is a tome spell, equal to the read-ahead tax; For brews, this is the value of the current urgency bonus
+        TaxGain = int.Parse(inputs[8]); // in the first two leagues: always 0; later: the amount of taxed tier-0 ingredients you gain from learning this spell; For brews, this is how many times you can still gain an urgency bonus
+        Castable = inputs[9] != "0"; // in the first league: always 0; later: 1 if this is a castable player spell
+        Repetable = inputs[10] != "0"; // for the first two leagues: always 0; later: 1 if this is a repeatable player spell
+        if(actionType == "LEARN"){
+            Learnable = true;
+        }
+    }
+
+    public int Evaluate(List<Spell> spells)
+    {
+        var gains = new int[4];
+        foreach(var spell in spells)
+        {
+            for(var i = 0; i < 4; i++)
+            {
+                gains[i] += spell.Cost[i];
+            }
+        }
+
+        for(var i = 0; i < 4; i++)
+        {
+            gains[i] += Cost[i];
+        }
+
+        return gains.Min();
+    }
+
+    public bool CanAfford(int[] Inventory)
+    {
+        if(Learnable)
+        {
+            return Inventory[0] >= TaxCost;
+        }
+
+        for(var i = 0; i < 4; i++)
+        {
+            if(Cost[i] + Inventory[i] < 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool GivesValue(int[] needed)
+    {
+        for(var i = 0; i < 4; i++)
+        {
+            if(needed[i] > 0 && Cost[i] > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public override string ToString()
+    {
+        return (Learnable ? "LEARN " : "CAST ") + Id;
+    }
+}
+
+class Customer
+{
+    public int[] Cost = new int[4];
+    public int Value, Id;
+
+    public Customer(string[] inputs)
+    {
+        for(var i = 0; i < 4; i++)
+        {
+            Cost[i] = int.Parse(inputs[i + 2]);
+        }
+        Value = int.Parse(inputs[6]);
+        Id = int.Parse(inputs[0]);
+
+        string actionType = inputs[1]; // in the first league: BREW; later: CAST, OPPONENT_CAST, LEARN, BREW
+        int delta0 = int.Parse(inputs[2]); // tier-0 ingredient change
+        int delta1 = int.Parse(inputs[3]); // tier-1 ingredient change
+        int delta2 = int.Parse(inputs[4]); // tier-2 ingredient change
+        int delta3 = int.Parse(inputs[5]); // tier-3 ingredient change
+        int tomeIndex = int.Parse(inputs[7]); // in the first two leagues: always 0; later: the index in the tome if this is a tome spell, equal to the read-ahead tax; For brews, this is the value of the current urgency bonus
+        int taxCount = int.Parse(inputs[8]); // in the first two leagues: always 0; later: the amount of taxed tier-0 ingredients you gain from learning this spell; For brews, this is how many times you can still gain an urgency bonus
+        bool castable = inputs[9] != "0"; // in the first league: always 0; later: 1 if this is a castable player spell
+        bool repeatable = inputs[10] != "0"; // for the first two leagues: always 0; later: 1 if this is a repeatable player spell
+    }
+
+    public double Evaluate(int[] gain)
+    {
+        var value = 0.1;
+        for(var i = 0; i < 4; i++)
+        {
+            if(Cost[i] == 0) continue;
+            if(gain[i] == 0)
+            {
+                value += 1;
+                continue;
+            }
+            value += Math.Abs((double)Cost[i] / gain[i]);
+            // -2 2 => 1
+            // -2 3 => 0.5
+        }
+
+        var res = Value / value;
+        return res;
+    }
+
+    public override string ToString()
+    {
+        return "BREW " + Id;
+    }
+}
+
+class Player
+{
+    public int[] Inventory = new int[4];
+    public int Score;
+    public List<Spell> Spells = new List<Spell>();
+
+    public int SumIngredients => Inventory.Sum();
+
+    public void Initialize(string[] inputs)
+    {
+        for(var i = 0; i < 4; i++)
+        {
+            Score = int.Parse(inputs[4]);
+            Inventory[i] = int.Parse(inputs[i]);
+        }
+    }
+
+    public bool CanAfford(int[] Cost)
+    {
+        for(var i = 0; i < 4; i++)
+        {
+            if(Inventory[i] + Cost[i] < 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public int[] GetGain()
+    {
+        var gains = new int[4];
+        foreach(var spell in Spells)
+        {
+            for(var i = 0; i < 4; i++)
+            {
+                gains[i] += spell.Cost[i];
+            }
+        }
+
+        return gains;
+    }
+
+}
+
+class FallChalange2020
+{
+
+    public static int Round;
+
+    static void Main()
+    {
+
+        // game loop
+        while (true)
+        {
+            var game = GameReader.ReadGame();
+
+            var agent = new Agent(game);
+            Console.WriteLine(agent.Think());
+            Round++;
+        }
+    }
+}
