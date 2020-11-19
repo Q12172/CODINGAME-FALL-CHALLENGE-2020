@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -15,10 +16,10 @@ class GameReader
     public static Game ReadGame()
     {
         var game = new Game();
-        int actionCount = int.Parse(Console.ReadLine()); // the number of spells and recipes in play
+        int actionCount = int.Parse(ReadLine()); // the number of spells and recipes in play
         for (int i = 0; i < actionCount; i++)
         {
-            var inputs = Console.ReadLine().Split(' ');
+            var inputs = ReadLine().Split(' ');
             int actionId = int.Parse(inputs[0]); // the unique ID of this spell or recipe
             string actionType = inputs[1]; // in the first league: BREW; later: CAST, OPPONENT_CAST, LEARN, BREW
             int delta0 = int.Parse(inputs[2]); // tier-0 ingredient change
@@ -44,7 +45,7 @@ class GameReader
         }
         for (int i = 0; i < 2; i++)
         {
-            var inputs = Console.ReadLine().Split(' ');
+            var inputs = ReadLine().Split(' ');
             game.Players[i].Initialize(inputs);
         }
 
@@ -52,6 +53,13 @@ class GameReader
         game.Customers[1].Value += 1;
 
         return game;
+    }
+
+    public static string ReadLine()
+    {
+        var s = Console.ReadLine();
+        //Console.Error.WriteLine(s);
+        return s;
     }
 }
 
@@ -66,11 +74,19 @@ class Agent
 
     public string Think()
     {
+        var BestCutomer = GetBestCustomer();
+        var dist = DistService.GetDistance(game.Me.Inventory, game.Me.Spells, BestCutomer.Cost, out var spellOrder);
+        
+        //Console.Error.WriteLine(string.Join(" ", dist));
         if(GetAffordableCustomer(out var customer)) return customer.ToString();
         if(LearnSpells(out var tomeSpell)) return tomeSpell.ToString();
-        if(HasDoableSpell(out var spell)) return spell.ToString();
 
-        return "REST";
+        spellOrder.ForEach(Console.Error.WriteLine);
+        if(spellOrder[0] == -1)
+            return "REST";
+        //if(HasDoableSpell(out var spell)) return spell.ToString();
+        
+        return game.Me.Spells[spellOrder[0]].ToString();
     }
 
     private bool LearnSpells(out Spell result)
@@ -133,6 +149,12 @@ class Agent
         result = null;
         return false;
     }
+
+    private Customer GetBestCustomer()
+    {
+        var gain = game.Me.GetGain();
+        return game.Customers.OrderByDescending(c => c.Evaluate(gain)).First();
+    }
 }
 
 class Game
@@ -191,6 +213,23 @@ class Spell
         }
 
         return gains.Min();
+    }
+
+    public bool CanUseWithoutCastable(int[] Inventory)
+    {
+        var sum = 0;
+        for(var i = 0; i < 4; i++)
+        {
+            if(Cost[i] + Inventory[i] < 0)
+            {
+                return false;
+            }
+
+            sum += Inventory[i];
+            sum += Cost[i];
+        }
+
+        return sum <= 10;
     }
 
     public bool CanAfford(int[] Inventory)
@@ -330,9 +369,129 @@ class Player
 
 class DistService
 {
-    public static int GetDistance(int[] Inventory, List<Spell> spells)
+    public static int GetDistance(int[] inventory, List<Spell> spells, int[] requirements, out List<int> spellOrder)
     {
-        
+        var s = Stopwatch.StartNew();
+        var nodes = new List<Node>();
+        nodes.Add(new Node {Inventory = (int[]) inventory});
+        var firstNode = nodes.First();
+        for(var i = 0; i < spells.Count; i++)
+        {
+            var spell = spells[i];
+            if(!spell.Castable)
+            {
+                firstNode.UsedSpells.Add(i);
+            }
+        }
+        for(var d = 0; d < 4; d++)
+        {
+            var nextNodes = new List<Node>();
+            var bestScore = -1000;
+            foreach(var current in nodes)
+            {
+                var dist = current.Distance(requirements);
+                if(dist > bestScore) 
+                {
+                    bestScore = dist;
+                    if(dist == 0) break;
+                }
+
+                for(var i = 0; i < spells.Count; i++)
+                {
+                    var spell = spells[i];
+                    if(!spell.CanUseWithoutCastable(current.Inventory)) continue;
+                    var nextNode = current.Clone();
+                    nextNode.Apply(spell.Cost, i);
+                    nextNodes.Add(nextNode);
+                }
+            }
+
+            if(bestScore == 0) break;
+            nodes = nextNodes;
+        }
+
+        var bestNode = GetBest(nodes, requirements, out var score);
+
+        Console.Error.WriteLine("Time: " + s.ElapsedMilliseconds);
+        spellOrder = bestNode.UsedSpells.Skip(spells.Count(s => !s.Castable)).ToList();
+        return bestNode.UsedSpells.Count;
+    }
+
+    private static Node GetBest(List<Node> nodes, int[] requirements, out int bestScore)
+    {
+        var bestNode = nodes[0];
+        bestScore = -1000;
+        foreach(var node in nodes)
+        {
+            var score = node.Distance(requirements);
+            if(score > bestScore)
+            {
+                bestScore = score;
+                bestNode = node;
+            }
+        }
+
+        return bestNode;
+    }
+
+}
+
+class Node
+{
+    public int[] Inventory = new int[4];
+    public List<int> UsedSpells = new List<int>();
+    //spells = 0..N + -1 = Rest
+
+    public void Apply(int[] cost, int index)
+    {
+        for(var i = 0; i < 4; i++)
+        {
+            Inventory[i] += cost[i];
+        }
+
+        UseSpell(index);
+    }
+
+    public Node Clone()
+    {
+        return new Node
+        {
+            Inventory = (int[])Inventory.Clone(),
+            UsedSpells = UsedSpells.ToList()
+        };
+    }
+
+    public static int[] IngredientValue = new int[4] {1, 2, 4, 8};
+
+    public int Distance(int[] requirements)
+    {
+        var dist = 0;
+        for(var i = 0; i < 4; i++)
+        {
+            if(Inventory[i] >= Math.Abs(requirements[i])) dist -= (Inventory[i] + requirements[i]);
+            else dist += (Inventory[i] + requirements[i]) * IngredientValue[i]; 
+        }
+        return dist;
+    }
+
+    public void UseSpell(int index)
+    {
+        var rested = true;
+        for(var i = UsedSpells.Count - 1; i > -1; i--)
+        {
+            //if(UsedSpells[i] != -1) break;
+            if(UsedSpells[i] == index)
+            {
+                rested = false;
+                break;
+            }
+        }
+        if(!rested)
+        {
+            UsedSpells.Add(-1);
+        }
+
+        UsedSpells.Add(index);
     }
 }
 
