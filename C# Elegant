@@ -318,13 +318,22 @@ class Player
         {
             for(var i = 0; i < 4; i++)
             {
-                gains[i] += spell.Cost[i];
+                if(spell.Cost[i] > 0)
+                    gains[i] += spell.Cost[i];
             }
         }
 
         return gains;
     }
 
+}
+
+class DistService
+{
+    public static int GetDistance(int[] Inventory, List<Spell> spells)
+    {
+        
+    }
 }
 
 class FallChalange2020
