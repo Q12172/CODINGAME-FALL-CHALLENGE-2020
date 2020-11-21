@@ -120,15 +120,7 @@ while (true) {
         }
     }
 
-    /*
-
-    - Things I want to do:
-    - 1) choose which spells to learn and learn them [Later]
-
-    */
-
     if(Learn > 0){
-        //console.log("LEARN " + LearnableSpells[0].Id);
         let ID = GetIdLearn(LearnableSpells, Me.Inventory[0]);
         if(ID != -1){
             console.log("LEARN " + ID);
@@ -137,26 +129,14 @@ while (true) {
         }
     }
 
-    //console.error("Me.Spells: ")
-    //console.error(Me.Spells)
-    //console.error()
-
     PossiblesPaths = [];
     Global_Path = [];
-    //States = [];
 
     Sim(Me.Inventory, Me.Spells, Orders, 4, 0);
 
-    /*for(let i = 0; i < PossiblesPaths.length; i++){
-        if(PossiblesPaths[i] == undefined) continue;
-        console.error(PossiblesPaths[i].Path);
-        console.error("Price: " + PossiblesPaths[i].Price);
-        console.error();
-    }*/
-
     let check = false;
 
-    if(Me.NumberOfOrderProvided == 5 || Op.NumberOfOrderProvided == 5){
+    //if(Me.NumberOfOrderProvided == 5 || Op.NumberOfOrderProvided == 5){
         /*if(Me.Score > Op.Score){
             PossiblesPaths.sort((a,b) => a.Path.length - b.Path.length);
 
@@ -182,7 +162,7 @@ while (true) {
                 check = true;
             }
         }*/
-    }
+    //}
 
     if(!check){
         PossiblesPaths.sort((a,b) => b.Price / b.Path.length - a.Price / a.Path.length)
@@ -200,6 +180,39 @@ while (true) {
             //console.error("Change Path!!!")
             CurrentPath = PossiblesPaths[0].Path;
             CurrentPrice = PossiblesPaths[0].Price;
+        }
+
+        if(Me.NumberOfOrderProvided == 5 || Op.NumberOfOrderProvided == 5){
+            PossiblesPaths.sort((a,b) => b.Path.length - a.Path.length);
+            PossiblesPaths.sort((a,b) => b.Price - a.Price);
+
+            let Index = -1;
+            let BestLen = 100000;
+
+            if(CurrentPrice + Me.Score > Op.Score){
+                BestLen = CurrentPath.length;
+            }
+
+            for(let i = 0; i < PossiblesPaths.length; i++){
+                if(PossiblesPaths[i] == undefined) break;
+
+                if(PossiblesPaths[i].Price + Me.Score > Op.Score
+                && PossiblesPaths[i].Path.length < BestLen){
+                    BestLen = PossiblesPaths[i].Path.length;
+                    Index = i;
+                }
+            }
+
+            //console.error("Index: "+Index)
+            //console.error()
+            
+            if(Index != -1){
+                //console.error("PossiblesPaths[Index]")
+                //console.error(PossiblesPaths[Index])
+                //console.error()
+                CurrentPath = PossiblesPaths[Index].Path;
+                CurrentPrice = PossiblesPaths[Index].Price;
+            }
         }
     }
 
@@ -316,10 +329,8 @@ function Sim(inventory, spells, orders, depth, Price){
 
                     if(NumberOfCast == 1)
                         Global_Path.push({Action: "CAST", actionId: spell.Id});
-                    else{
+                    else
                         Global_Path.push({Action: "CAST", actionId: spell.Id, Times: NumberOfCast});
-                        //console.error("TRIED!!!!!!")
-                    }
 
                     if(Index != -1){
                         let price = orders[Index].Price;
@@ -357,7 +368,6 @@ function Sim(inventory, spells, orders, depth, Price){
 
                     Global_Path.splice(Global_Path.length - 1,1);
 
-                    //Global_Path = SavedPath.slice();
                 }
                 else{
                     break;
@@ -388,10 +398,8 @@ function Sim(inventory, spells, orders, depth, Price){
 
                     if(NumberOfCast == 1)
                         Global_Path.push({Action: "CAST", actionId: spell.Id});
-                    else{
+                    else
                         Global_Path.push({Action: "CAST", actionId: spell.Id, Times: NumberOfCast});
-                        //console.error("TRIED!!!!!!")
-                    }
 
                     if(Index != -1){
                         let price = orders[Index].Price;
@@ -431,7 +439,6 @@ function Sim(inventory, spells, orders, depth, Price){
                     
                     Global_Path.splice(Global_Path.length - 2, 2);
 
-                    //Global_Path = SavedPath.slice();
                 }
                 else{
                     break;
