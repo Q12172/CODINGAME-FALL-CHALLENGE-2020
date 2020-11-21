@@ -128,7 +128,9 @@ while (true) {
     */
 
     if(Learn > 0){
-        console.log("LEARN " + LearnableSpells[0].Id);
+        //console.log("LEARN " + LearnableSpells[0].Id);
+        let ID = GetIdLearn(LearnableSpells, Me.Inventory[0]);
+        console.log("LEARN " + ID);
         Learn--;
         continue;
     }
@@ -183,12 +185,12 @@ while (true) {
     if(!check){
         PossiblesPaths.sort((a,b) => b.Price / b.Path.length - a.Price / a.Path.length)
 
-        /*for(let i = 0; i < PossiblesPaths.length; i++){
+        for(let i = 0; i < PossiblesPaths.length; i++){
             if(PossiblesPaths[i] == undefined) break;
             //console.error(PossiblesPaths[i].Path);
             //console.error("Price: " + PossiblesPaths[i].Price);
             //console.error();
-        }*/
+        }
 
         if(PossiblesPaths.length > 0 && (CurrentPath.length == 0 || (PossiblesPaths[0].Price / PossiblesPaths[0].Path.length > CurrentPrice / CurrentPath.length) ||
         (CurrentPath.length != 0 && TargetOrderIsNotExist(CurrentPath[CurrentPath.length - 1].actionId, Orders)))){
@@ -198,9 +200,9 @@ while (true) {
         }
     }
 
-    //console.error("CurrentPath: ")
-    //console.error(CurrentPath)
-    //console.error()
+    console.error("CurrentPath: ")
+    console.error(CurrentPath)
+    console.error()
 
     if(CurrentPath.length != 0){
         let Step = CurrentPath.splice(0,1)[0];
@@ -226,6 +228,52 @@ while (true) {
     // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
 }
 
+function GetIdLearn(LearnableSpells, NumberOfBlues){
+
+    let Max = -1000;
+    let BestId = 0;
+
+    for(let i = 0; i < LearnableSpells.length; i++){
+        let LearnableSpell = LearnableSpells[i];
+
+        let cost = 0;
+
+        for(let j = 0; j < LearnableSpell.Cost.length; j++){
+            if(LearnableSpell.Cost[i] < 0){
+                cost += LearnableSpell.Cost[i] * -1;
+            }
+        }
+
+        if(LearnableSpell.TomeIndex > NumberOfBlues ||
+        cost > 4) continue;
+
+        let Values = [1, 2, 3, 4];
+
+        let gain = 0;
+        cost = 0;
+
+        for(let j = 0; j < LearnableSpell.Cost.length; j++){
+            if(LearnableSpell.Cost[i] < 0){
+                cost += LearnableSpell.Cost[i] * -1 * Values[i];
+            }
+            else if(LearnableSpell.Cost[i] > 0){
+                gain += LearnableSpell.Cost[i] * Values[i];
+            }
+        }
+
+        let diff = gain - cost;
+
+        if(diff > Max){
+            Max = diff;
+            BestId = LearnableSpell.Id;
+        }
+
+    }
+
+    return BestId;
+
+}
+
 function DoASpell(Inventory, Spells){
 
     for(let i = 0; i < Spells.length; i++){
@@ -244,16 +292,6 @@ function Sim(inventory, spells, orders, depth, Price){
     if(depth == 0) return;
 
     if(Date.now() - Time >= 50) return;
-
-    /*if(SameState(inventory, spells)){
-        console.error("D")
-        return;
-    }
-
-    States.push(inventory);
-    States.push(spells);*/
-
-    //let SavedPath = Global_Path.slice();
 
     for(let i = 0; i < spells.length; i++){
         let spell = spells[i];
@@ -403,19 +441,6 @@ function Sim(inventory, spells, orders, depth, Price){
     }
 
 }
-
-/*function SameState(inventory, spells){
-
-    for(let i = 0; i < States.length; i+=2){
-        if(States[i].every((x,j) => inventory[j] == x)
-        && States[i + 1].every((x, j) => 
-        {
-            x.Castable == spells[j].Castable
-        }))
-        return true;
-    }
-    return false;
-}*/
 
 function CanProvideOrder(inventory, orders){
 
