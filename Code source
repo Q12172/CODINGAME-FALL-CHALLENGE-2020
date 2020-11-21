@@ -130,9 +130,11 @@ while (true) {
     if(Learn > 0){
         //console.log("LEARN " + LearnableSpells[0].Id);
         let ID = GetIdLearn(LearnableSpells, Me.Inventory[0]);
-        console.log("LEARN " + ID);
-        Learn--;
-        continue;
+        if(ID != -1){
+            console.log("LEARN " + ID);
+            Learn--;
+            continue;
+        }
     }
 
     //console.error("Me.Spells: ")
@@ -155,7 +157,7 @@ while (true) {
     let check = false;
 
     if(Me.NumberOfOrderProvided == 5 || Op.NumberOfOrderProvided == 5){
-        if(Me.Score > Op.Score){
+        /*if(Me.Score > Op.Score){
             PossiblesPaths.sort((a,b) => a.Path.length - b.Path.length);
 
             if(PossiblesPaths.length != 0 && (CurrentPath.length == 0 || 
@@ -167,7 +169,7 @@ while (true) {
                 check = true;
             }
         }
-        /*else{
+        else{
             PossiblesPaths.sort((a,b) => b.Price- a.Price);
 
 
@@ -184,13 +186,14 @@ while (true) {
 
     if(!check){
         PossiblesPaths.sort((a,b) => b.Price / b.Path.length - a.Price / a.Path.length)
+        //PossiblesPaths.sort((a,b) => b.Price - a.Price)
 
-        for(let i = 0; i < PossiblesPaths.length; i++){
+        /*for(let i = 0; i < PossiblesPaths.length; i++){
             if(PossiblesPaths[i] == undefined) break;
-            //console.error(PossiblesPaths[i].Path);
-            //console.error("Price: " + PossiblesPaths[i].Price);
-            //console.error();
-        }
+            console.error(PossiblesPaths[i].Path);
+            console.error("Price: " + PossiblesPaths[i].Price);
+            console.error();
+        }*/
 
         if(PossiblesPaths.length > 0 && (CurrentPath.length == 0 || (PossiblesPaths[0].Price / PossiblesPaths[0].Path.length > CurrentPrice / CurrentPath.length) ||
         (CurrentPath.length != 0 && TargetOrderIsNotExist(CurrentPath[CurrentPath.length - 1].actionId, Orders)))){
@@ -231,7 +234,7 @@ while (true) {
 function GetIdLearn(LearnableSpells, NumberOfBlues){
 
     let Max = -1000;
-    let BestId = 0;
+    let BestId = -1;
 
     for(let i = 0; i < LearnableSpells.length; i++){
         let LearnableSpell = LearnableSpells[i];
@@ -239,13 +242,12 @@ function GetIdLearn(LearnableSpells, NumberOfBlues){
         let cost = 0;
 
         for(let j = 0; j < LearnableSpell.Cost.length; j++){
-            if(LearnableSpell.Cost[i] < 0){
-                cost += LearnableSpell.Cost[i] * -1;
+            if(LearnableSpell.Cost[j] < 0){
+                cost += LearnableSpell.Cost[j] * -1;
             }
         }
 
-        if(LearnableSpell.TomeIndex > NumberOfBlues ||
-        cost > 4) continue;
+        if(LearnableSpell.TomeIndex > NumberOfBlues || cost > 4) continue;
 
         let Values = [1, 2, 3, 4];
 
@@ -253,11 +255,11 @@ function GetIdLearn(LearnableSpells, NumberOfBlues){
         cost = 0;
 
         for(let j = 0; j < LearnableSpell.Cost.length; j++){
-            if(LearnableSpell.Cost[i] < 0){
-                cost += LearnableSpell.Cost[i] * -1 * Values[i];
+            if(LearnableSpell.Cost[j] < 0){
+                cost += LearnableSpell.Cost[j] * -1 * Values[j];
             }
-            else if(LearnableSpell.Cost[i] > 0){
-                gain += LearnableSpell.Cost[i] * Values[i];
+            else if(LearnableSpell.Cost[j] > 0){
+                gain += LearnableSpell.Cost[j] * Values[j];
             }
         }
 
