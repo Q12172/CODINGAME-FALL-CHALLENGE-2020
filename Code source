@@ -205,18 +205,17 @@ while (true) {
 
     let c = false;
 
-    for(let j = 0; j < PossiblesPathsOp.length; j++){
-        let P = PossiblesPathsOp[j];
-        if(P == undefined) break;
-        if(CurrentPath[CurrentPath.length - 1].actionId == P.Path[P.Path.length - 1].actionId && 
-        CurrentPath.length > P.Path.length){
-            //console.error("My Id: " +CurrentPath[CurrentPath.length - 1].actionId);
-            //console.error("Op Id: " +P.Path[P.Path.length - 1].actionId);
-            //console.error("CurrentPath.length: " +CurrentPath.length);
-            //console.error("P.Path.length: " +P.Path.length);
-            c = true;
-            //console.error("CHANGE C!!!!!")
-            break;
+    if(CurrentPath.length != 0){
+
+        for(let j = 0; j < PossiblesPathsOp.length; j++){
+            let P = PossiblesPathsOp[j];
+            if(P == undefined) break;
+            if(CurrentPath[CurrentPath.length - 1].actionId == P.Path[P.Path.length - 1].actionId && 
+            CurrentPath.length > P.Path.length){
+                c = true;
+                //console.error("CHANGE C!!!!!")
+                break;
+            }
         }
     }
 
@@ -249,9 +248,9 @@ while (true) {
         }
     }
 
-    //console.error("CurrentPath: ")
-    //console.error(CurrentPath)
-    //console.error()
+    console.error("CurrentPath: ")
+    console.error(CurrentPath)
+    console.error()
 
     if(CurrentPath.length != 0){
         let Step = CurrentPath.splice(0,1)[0];
@@ -346,14 +345,14 @@ function DoASpell(Inventory, Spells){
 
 }
 
-function SimOp(inventory, spells, orders, depth, Price){
+function SimOp(inv, spellllls, oorders, depth, Price){
 
     if(depth == 0) return;
 
-    if(Date.now() - Time >= 49) return;
+    if(Date.now() - Time >= 48) return;
 
-    for(let i = 0; i < spells.length; i++){
-        let spell = spells[i];
+    for(let i = 0; i < spellllls.length; i++){
+        let spell = spellllls[i];
         let NumberOfCast = 1;
 
         if(spell.Castable){
@@ -362,14 +361,15 @@ function SimOp(inventory, spells, orders, depth, Price){
                     break;
                 }
                 let mone = 1;
-                let SumInventory = Combine(inventory, spell.Cost);
+                let SumInventory = Combine(inv, spell.Cost);
+
                 while(mone < NumberOfCast){
                     SumInventory = Combine(SumInventory, spell.Cost);
                     mone++;
                 }
 
                 if(SumInventory != undefined){
-                    let Index = CanProvideOrder(SumInventory, orders);
+                    let Index = CanProvideOrder(SumInventory, oorders);
 
                     if(NumberOfCast == 1)
                         Global_Path.push({Action: "CAST", actionId: spell.Id});
@@ -377,8 +377,8 @@ function SimOp(inventory, spells, orders, depth, Price){
                         Global_Path.push({Action: "CAST", actionId: spell.Id, Times: NumberOfCast});
 
                     if(Index != -1){
-                        let price = orders[Index].Price;
-                        let ActionId = orders[Index].Id;
+                        let price = oorders[Index].Price;
+                        let ActionId = oorders[Index].Id;
                         Global_Path.push({Action: "BREW", actionId: ActionId});
 
                         Price += price;
@@ -388,14 +388,14 @@ function SimOp(inventory, spells, orders, depth, Price){
                             PossiblesPathsOp[price] = {Path: Global_Path.slice(), Price};
                         }
 
-                        SumInventory = Combine(SumInventory, orders[Index].Cost);
+                        SumInventory = Combine(SumInventory, oorders[Index].Cost);
 
                         let NextSpells = [];
-                        for(let i = 0; i < spells.length; i++){
-                            NextSpells[i] = Object.assign({}, spells[i])
+                        for(let j = 0; j < spellllls.length; j++){
+                            NextSpells[j] = Object.assign({}, spellllls[j])
                         }
                         NextSpells[i].Castable = false;
-                        Sim(SumInventory, NextSpells, orders, depth - 1, Price);
+                        SimOp(SumInventory, NextSpells, oorders, depth - 1, Price);
 
                         Price -= price;
 
@@ -403,11 +403,11 @@ function SimOp(inventory, spells, orders, depth, Price){
                     }
                     else{
                         let NextSpells = [];
-                        for(let i = 0; i < spells.length; i++){
-                            NextSpells[i] = Object.assign({}, spells[i])
+                        for(let j = 0; j < spellllls.length; j++){
+                            NextSpells[j] = Object.assign({}, spellllls[j])
                         }
                         NextSpells[i].Castable = false;
-                        Sim(SumInventory, NextSpells, orders, depth - 1, Price);
+                        SimOp(SumInventory, NextSpells, oorders, depth - 1, Price);
                     }
 
                     Global_Path.splice(Global_Path.length - 1,1);
@@ -428,7 +428,7 @@ function SimOp(inventory, spells, orders, depth, Price){
 
                 let mone = 1;
 
-                let SumInventory = Combine(inventory, spell.Cost);
+                let SumInventory = Combine(inv, spell.Cost);
 
                 while(mone < NumberOfCast){
                     SumInventory = Combine(SumInventory, spell.Cost);
@@ -436,7 +436,7 @@ function SimOp(inventory, spells, orders, depth, Price){
                 }
 
                 if(SumInventory != undefined){
-                    let Index = CanProvideOrder(SumInventory, orders);
+                    let Index = CanProvideOrder(SumInventory, oorders);
 
                     Global_Path.push({Action: "REST"});
 
@@ -446,8 +446,8 @@ function SimOp(inventory, spells, orders, depth, Price){
                         Global_Path.push({Action: "CAST", actionId: spell.Id, Times: NumberOfCast});
 
                     if(Index != -1){
-                        let price = orders[Index].Price;
-                        let ActionId = orders[Index].Id;
+                        let price = oorders[Index].Price;
+                        let ActionId = oorders[Index].Id;
                         Global_Path.push({Action: "BREW", actionId: ActionId});
 
                         Price += price;
@@ -457,15 +457,15 @@ function SimOp(inventory, spells, orders, depth, Price){
                             PossiblesPathsOp[price] = {Path: Global_Path.slice(), Price};
                         }
 
-                        SumInventory = Combine(SumInventory, orders[Index].Cost);
+                        SumInventory = Combine(SumInventory, oorders[Index].Cost);
 
                         let NextSpells = [];
-                        for(let i = 0; i < spells.length; i++){
-                            NextSpells[i] = Object.assign({}, spells[i])
-                            NextSpells[i].Castable = true;
+                        for(let j = 0; j < spellllls.length; j++){
+                            NextSpells[j] = Object.assign({}, spellllls[j])
+                            NextSpells[j].Castable = true;
                         }
                         NextSpells[i].Castable = false;
-                        Sim(SumInventory, NextSpells, orders, depth - 1, Price);
+                        SimOp(SumInventory, NextSpells, oorders, depth - 1, Price);
 
                         Price -= price;
 
@@ -473,12 +473,12 @@ function SimOp(inventory, spells, orders, depth, Price){
                     }
                     else{
                         let NextSpells = [];
-                        for(let i = 0; i < spells.length; i++){
-                            NextSpells[i] = Object.assign({}, spells[i])
-                            NextSpells[i].Castable = true;
+                        for(let j = 0; j < spellllls.length; j++){
+                            NextSpells[j] = Object.assign({}, spellllls[j])
+                            NextSpells[j].Castable = true;
                         }
                         NextSpells[i].Castable = false;
-                        Sim(SumInventory, NextSpells, orders, depth - 1, Price);
+                        SimOp(SumInventory, NextSpells, oorders, depth - 1, Price);
                     }
                     
                     Global_Path.splice(Global_Path.length - 2, 2);
@@ -501,6 +501,10 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
 
     if(Date.now() - Time >= 49) return;
 
+    //console.error("spells: ")
+    //console.error(spells)
+   // console.error()
+
     for(let i = 0; i < spells.length; i++){
         let spell = spells[i];
         let NumberOfCast = 1;
@@ -532,12 +536,21 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
 
                         Price += price;
 
+                        SumInventory = Combine(SumInventory, orders[Index].Cost);
+
+                        let sum = 0;
+                        let Values = [1, 2, 3, 4];
+
+                        for(let j = 0; j < 4; j++){
+                            sum += SumInventory[j] * Values[j] * 0.2;
+                        }
+
+                        Price += sum;
+
                         if(PossiblesPaths[price] == undefined || 
                         PossiblesPaths[price].Path.length > Global_Path.length){
                             PossiblesPaths[price] = {Path: Global_Path.slice(), Price};
                         }
-
-                        SumInventory = Combine(SumInventory, orders[Index].Cost);
 
                         let NextSpells = [];
                         for(let j = 0; j < spells.length; j++){
@@ -554,6 +567,7 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
                         Sim(SumInventory, NextSpells, orders, LearnSpells, depth - 1, Price)
 
                         Price -= price;
+                        Price -= sum;
 
                         Global_Path.splice(Global_Path.length - 1,1);
                     }
@@ -608,12 +622,22 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
 
                         Price += price;
 
+                        SumInventory = Combine(SumInventory, orders[Index].Cost);
+
+                        let sum = 0;
+                        let Values = [1, 2, 3, 4];
+
+                        for(let j = 0; j < 4; j++){
+                            sum += SumInventory[j] * Values[j] * 0.2;
+                        }
+
+                        Price += sum;
+
                         if(PossiblesPaths[price] == undefined || 
                         PossiblesPaths[price].Path.length > Global_Path.length){
                             PossiblesPaths[price] = {Path: Global_Path.slice(), Price};
                         }
 
-                        SumInventory = Combine(SumInventory, orders[Index].Cost);
 
                         let NextSpells = [];
                         for(let j = 0; j < spells.length; j++){
@@ -631,6 +655,7 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
                         Sim(SumInventory, NextSpells, orders, LearnSpells, depth - 1, Price)
 
                         Price -= price;
+                        Price -= sum;
 
                         Global_Path.splice(Global_Path.length - 1,1);
                     }
