@@ -137,9 +137,9 @@ while (true) {
     PossiblesPathsOp = [];
     Global_Path = [];
 
-    SimOp(Op.Inventory, Op.Spells, Orders, 1, 0);
+    //SimOp(Op.Inventory, Op.Spells, Orders, 1, 0);
 
-    PossiblesPathsOp.sort((a,b) => a.Path.length - b.Path.length);
+    //PossiblesPathsOp.sort((a,b) => a.Path.length - b.Path.length);
 
     /*console.error("PossiblesPathsOp: ");
     for(let i = 0; i < PossiblesPathsOp.length; i++){
@@ -203,7 +203,7 @@ while (true) {
         }
     }
 
-    let c = false;
+    /*let c = false;
 
     if(CurrentPath.length != 0){
 
@@ -246,11 +246,11 @@ while (true) {
             }
             index++;
         }
-    }
+    }*/
 
-    console.error("CurrentPath: ")
-    console.error(CurrentPath)
-    console.error()
+    //console.error("CurrentPath: ")
+    //console.error(CurrentPath)
+    //console.error()
 
     if(CurrentPath.length != 0){
         let Step = CurrentPath.splice(0,1)[0];
@@ -345,6 +345,7 @@ function DoASpell(Inventory, Spells){
 
 }
 
+/*
 function SimOp(inv, spellllls, oorders, depth, Price){
 
     if(depth == 0) return;
@@ -493,7 +494,7 @@ function SimOp(inv, spellllls, oorders, depth, Price){
         }
     }
 
-}
+}*/
 
 function Sim(inventory, spells, orders, LearnSpells, depth, Price){
 
@@ -542,7 +543,7 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
                         let Values = [1, 2, 3, 4];
 
                         for(let j = 0; j < 4; j++){
-                            sum += SumInventory[j] * Values[j] * 0.2;
+                            sum += SumInventory[j] * Values[j] * 0.5;
                         }
 
                         Price += sum;
@@ -628,7 +629,7 @@ function Sim(inventory, spells, orders, LearnSpells, depth, Price){
                         let Values = [1, 2, 3, 4];
 
                         for(let j = 0; j < 4; j++){
-                            sum += SumInventory[j] * Values[j] * 0.2;
+                            sum += SumInventory[j] * Values[j] * 0.5;
                         }
 
                         Price += sum;
